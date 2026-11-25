@@ -9,11 +9,12 @@ $meniu = [
     'Vadybininkas' => [
         'Tiekėjai'        => '/vadybininkas/tiekejai.php',
         'Dalių paieška'   => '/vadybininkas/daliu_paieska.php',
-        'Mano užsakymai'  => '/vadybininkas/uzsakymai.php',
+        'Mano užsakymai'  => '/vadybininkas/pateikti_uzsakymai.php',
     ],
     'Tiekejas' => [
         'Mano dalys'      => '/tiekejas/dalys.php',
-        'Gauti užsakymai' => '/tiekejas/uzsakymai.php',
+        'Pridėti dalį'    => '/tiekejas/prideti_dalis.php',
+        'Gauti užsakymai' => '/tiekejas/gauti_uzsakymai.php',
     ],
     'Direktorius' => [
         'Naudotojai'      => '/direktorius/naudotojai.php',

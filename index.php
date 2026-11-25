@@ -8,11 +8,12 @@ $korteles = [
     'Vadybininkas' => [
         ['Tiekėjai', 'Peržiūrėkite tiekėjų sąrašą ir jų siūlomas dalis.', 'vadybininkas/tiekejai.php'],
         ['Dalių paieška', 'Ieškokite dalių pagal pavadinimą ir palyginkite pasiūlymus.', 'vadybininkas/daliu_paieska.php'],
-        ['Mano užsakymai', 'Peržiūrėkite, redaguokite ar atšaukite pateiktus užsakymus.', 'vadybininkas/uzsakymai.php'],
+        ['Mano užsakymai', 'Peržiūrėkite, redaguokite ar atšaukite pateiktus užsakymus.', 'vadybininkas/pateikti_uzsakymai.php'],
     ],
     'Tiekejas' => [
-        ['Mano dalys', 'Pridėkite, redaguokite ar ištrinkite siūlomas dalis.', 'tiekejas/dalys.php'],
-        ['Gauti užsakymai', 'Peržiūrėkite užsakymus ir keiskite jų būseną.', 'tiekejas/uzsakymai.php'],
+        ['Mano dalys', 'Peržiūrėkite, redaguokite ar ištrinkite savo siūlomas dalis.', 'tiekejas/dalys.php'],
+        ['Pridėti dalį', 'Pridėkite naują siūlomą dalį.', 'tiekejas/prideti_dalis.php'],
+        ['Gauti užsakymai', 'Peržiūrėkite užsakymus ir keiskite jų būseną.', 'tiekejas/gauti_uzsakymai.php'],
     ],
     'Direktorius' => [
         ['Naudotojai', 'Peržiūrėkite naudotojus ir keiskite jų teises.', 'direktorius/naudotojai.php'],

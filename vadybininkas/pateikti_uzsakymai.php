@@ -9,7 +9,7 @@ $manoId = (int)$_SESSION['naudotojo_id'];
 function grizti(string $tipas, string $tekstas, int $atidaryti = 0): never {
     $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
     $uzklausa = $_SERVER['QUERY_STRING'] ?? '';
-    header('Location: uzsakymai.php' . ($uzklausa ? "?$uzklausa" : '') . ($atidaryti ? "#u$atidaryti" : ''));
+    header('Location: pateikti_uzsakymai.php' . ($uzklausa ? "?$uzklausa" : '') . ($atidaryti ? "#u$atidaryti" : ''));
     exit;
 }
 
@@ -154,7 +154,7 @@ require __DIR__ . '/../includes/header.php';
 <!-- Filtras pagal būseną -->
 <nav class="mb-6 flex flex-wrap gap-2 text-sm">
     <?php $visoSk = array_sum($kiekPagalBusena); ?>
-    <a href="uzsakymai.php"
+    <a href="pateikti_uzsakymai.php"
        class="rounded-full px-4 py-1.5 border <?= $filtras === '' ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50' ?>">
         Visi <span class="opacity-60"><?= $visoSk ?></span>
     </a>

@@ -32,11 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         $vietos = implode(',', array_fill(0, count($kiekiai), '?'));
-        $stmt = $pdo->prepare("SELECT prekes_id, pavadinimas, kaina, kiekis FROM preke WHERE prekes_id IN ($vietos) FOR UPDATE");
+        $stmt = $pdo->prepare("SELECT prekes_id, tiekejo_id, pavadinimas, kaina, kiekis FROM preke WHERE prekes_id IN ($vietos) FOR UPDATE");
         $stmt->execute(array_keys($kiekiai));
         $prekes = array_column($stmt->fetchAll(), null, 'prekes_id');
 
-        $suma = 0;
+        // Kiekvienam tiekėjui – atskiras užsakymas (būseną keičia tas tiekėjas)
+        $pagalTiekeja = [];
         foreach ($kiekiai as $id => $k) {
             if (!isset($prekes[$id])) {
                 throw new RuntimeException('Viena iš krepšelio dalių nebeegzistuoja. Pašalinkite ją ir bandykite dar kartą.');
@@ -44,16 +45,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($k > (int)$prekes[$id]['kiekis']) {
                 throw new RuntimeException('„' . $prekes[$id]['pavadinimas'] . '“ sandėlyje liko tik ' . (int)$prekes[$id]['kiekis'] . ' vnt.');
             }
-            $suma += $k * (float)$prekes[$id]['kaina'];
+            $pagalTiekeja[$prekes[$id]['tiekejo_id']][$id] = $k;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO uzsakymas (vadybininko_id, suma, busena) VALUES (?, ?, 'Pateiktas')");
-        $stmt->execute([$_SESSION['naudotojo_id'], round($suma, 2)]);
-        $uzsakymoId = (int)$pdo->lastInsertId();
+        $naujasUzsakymas = $pdo->prepare("INSERT INTO uzsakymas (vadybininko_id, suma, busena) VALUES (?, ?, 'Pateiktas')");
+        $naujaEilute     = $pdo->prepare('INSERT INTO uzsakymo_preke (uzsakymo_id, prekes_id, kiekis, suma) VALUES (?, ?, ?, ?)');
+        $sukurti = [];
 
-        $stmt = $pdo->prepare('INSERT INTO uzsakymo_preke (uzsakymo_id, prekes_id, kiekis, suma) VALUES (?, ?, ?, ?)');
-        foreach ($kiekiai as $id => $k) {
-            $stmt->execute([$uzsakymoId, $id, $k, round($k * (float)$prekes[$id]['kaina'], 2)]);
+        foreach ($pagalTiekeja as $eilutes) {
+            $suma = 0;
+            foreach ($eilutes as $id => $k) {
+                $suma += round($k * (float)$prekes[$id]['kaina'], 2);
+            }
+            $naujasUzsakymas->execute([$_SESSION['naudotojo_id'], $suma]);
+            $uzsakymoId = (int)$pdo->lastInsertId();
+            $sukurti[] = $uzsakymoId;
+
+            foreach ($eilutes as $id => $k) {
+                $naujaEilute->execute([$uzsakymoId, $id, $k, round($k * (float)$prekes[$id]['kaina'], 2)]);
+            }
         }
 
         $pdo->commit();
@@ -62,7 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         klaida($e->getMessage());
     }
 
-    $_SESSION['zinute'] = ['tipas' => 'sekme', 'tekstas' => "Užsakymas Nr. $uzsakymoId pateiktas sėkmingai."];
+    $nr = implode(', ', $sukurti);
+    $_SESSION['zinute'] = ['tipas' => 'sekme', 'tekstas' => count($sukurti) === 1
+        ? "Užsakymas Nr. $nr pateiktas sėkmingai."
+        : 'Pateikti ' . count($sukurti) . " užsakymai (po vieną kiekvienam tiekėjui): Nr. $nr."];
     $_SESSION['isvalyti_krepseli'] = true;
     header('Location: krepselis.php');
     exit;
@@ -95,7 +108,7 @@ require __DIR__ . '/../includes/header.php';
                 <dt>Iš viso</dt><dd id="viso-suma"></dd>
             </div>
         </dl>
-        <p class="mt-2 text-xs text-slate-400">Galutinė suma apskaičiuojama pagal tuo metu galiojančias kainas.</p>
+        <p class="mt-2 text-xs text-slate-400">Galutinė suma apskaičiuojama pagal tuo metu galiojančias kainas. Jei krepšelyje yra kelių tiekėjų dalių, kiekvienam tiekėjui sukuriamas atskiras užsakymas.</p>
 
         <form method="post" id="uzsakymo-forma" class="mt-5">
             <input type="hidden" name="krepselis" id="krepselio-duomenys">
