@@ -152,7 +152,7 @@ require __DIR__ . '/../includes/header.php';
                                     <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($p['gamintojas'] ?? '—') ?></td>
                                     <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($p['modelis'] ?? '—') ?></td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap text-slate-600">
-                                        <?= $p['pristatymo_laikas'] !== null ? (int)$p['pristatymo_laikas'] . ' d.' : '—' ?>
+                                        <?= pristatymoLaikas($p['pristatymo_laikas']) ?>
                                     </td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap"><?= number_format((float)$p['kaina'], 2, ',', ' ') ?> €</td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap"><?= likutis($p) ?></td>

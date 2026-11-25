@@ -6,7 +6,7 @@ checkRole('Direktorius');
 
 // Kiek kokių detalių užsakyta, už kokią sumą ir kada bus pristatytos.
 // Atšaukti užsakymai neįskaičiuojami.
-// Pristatymo data = užsakymo pateikimo data + dalies pristatymo laikas (dienomis).
+// Pristatymo data – užsakyme išsaugota data (pateikimas + ilgiausias dalies pristatymo laikas darbo dienomis).
 // Rodoma vėliausia dar nepristatytų (Pateiktas / Priimtas) užsakymų data.
 $dalys = $pdo->query(
     "SELECT p.prekes_id, p.pavadinimas, p.gamintojas, p.modelis, p.pristatymo_laikas,
@@ -14,8 +14,7 @@ $dalys = $pdo->query(
             SUM(up.kiekis) AS kiekis,
             SUM(up.suma)   AS suma,
             SUM(u.busena IN ('Pateiktas', 'Priimtas')) AS laukiama,
-            MAX(CASE WHEN u.busena IN ('Pateiktas', 'Priimtas') AND p.pristatymo_laikas IS NOT NULL
-                     THEN DATE(u.pateikimo_data) + INTERVAL p.pristatymo_laikas DAY END) AS pristatymo_data
+            MAX(CASE WHEN u.busena IN ('Pateiktas', 'Priimtas') THEN u.pristatymo_data END) AS pristatymo_data
      FROM uzsakymo_preke up
      JOIN uzsakymas u  ON u.uzsakymo_id = up.uzsakymo_id
      JOIN preke p      ON p.prekes_id = up.prekes_id
@@ -85,7 +84,7 @@ require __DIR__ . '/../includes/header.php';
         </table>
     </div>
     <p class="mt-3 text-xs text-slate-500">
-        Atšaukti užsakymai neįskaičiuojami. Pristatymo data = užsakymo data + dalies pristatymo laikas; jei dalis užsakyta kelis kartus, rodoma vėliausia dar laukiama data.
+        Atšaukti užsakymai neįskaičiuojami. Pristatymo data – užsakyme numatyta data (darbo dienomis); jei dalis užsakyta kelis kartus, rodoma vėliausia dar laukiama data.
     </p>
 <?php endif; ?>
 

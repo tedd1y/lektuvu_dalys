@@ -33,7 +33,7 @@ function krepselioMygtukas(array $preke, string $tiekejas): string
 }
 
 // Dalies formos laukai (pagal `preke` lentelę)
-const DALIES_LAUKAI = ['pavadinimas' => '', 'gamintojas' => '', 'modelis' => '', 'kaina' => '', 'kiekis' => ''];
+const DALIES_LAUKAI = ['pavadinimas' => '', 'gamintojas' => '', 'modelis' => '', 'kaina' => '', 'kiekis' => '', 'pristatymo_laikas' => ''];
 
 // Patikrina dalies formą. Naudojama pridedant ir redaguojant.
 // Grąžina [$laukai, $klaidos, $kaina]; $isskyrusId – redaguojamos dalies ID (kad nelaikytų jos dublikatu).
@@ -68,6 +68,11 @@ function tikrintiDali(PDO $pdo, array $post, int $tiekejoId, int $isskyrusId = 0
     // kiekis INT NOT NULL
     if (!preg_match('/^\d{1,9}$/', $laukai['kiekis'])) {
         $klaidos['kiekis'] = 'Kiekis turi būti sveikas skaičius, 0 arba daugiau.';
+    }
+
+    // pristatymo_laikas INT UNSIGNED – darbo dienomis
+    if (!preg_match('/^\d{1,3}$/', $laukai['pristatymo_laikas']) || (int)$laukai['pristatymo_laikas'] < 1) {
+        $klaidos['pristatymo_laikas'] = 'Įveskite pristatymo laiką darbo dienomis (1–999).';
     }
 
     // Tas pats tiekėjas neturėtų turėti dviejų vienodų dalių
@@ -108,4 +113,23 @@ function grazintiLikuti(PDO $pdo, int $uzsakymoId): void
          SET p.kiekis = p.kiekis + up.kiekis
          WHERE up.uzsakymo_id = ?'
     )->execute([$uzsakymoId]);
+}
+
+// Pristatymo laikas sąraše, pvz. „5 d. d.“ (darbo dienos)
+function pristatymoLaikas($dienos): string
+{
+    return $dienos !== null ? (int)$dienos . ' d. d.' : '—';
+}
+
+// Data po N darbo dienų (savaitgaliai praleidžiami)
+function poDarboDienu(int $dienos, ?DateTimeImmutable $nuo = null): DateTimeImmutable
+{
+    $data = $nuo ?? new DateTimeImmutable('today');
+    while ($dienos > 0) {
+        $data = $data->modify('+1 day');
+        if ((int)$data->format('N') <= 5) {   // 1–5 = pirmadienis–penktadienis
+            $dienos--;
+        }
+    }
+    return $data;
 }

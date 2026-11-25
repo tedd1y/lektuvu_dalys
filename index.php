@@ -47,7 +47,7 @@ require __DIR__ . '/includes/header.php';
     </ul>
 <?php else: ?>
     <div class="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-5 text-amber-800">
-        Jūsų paskyra sukurta, tačiau dar neturi teisių. Kreipkitės į direktorių, kad jis suteiktų jums rolę.
+        Jūsų paskyra sukurta, tačiau dar neturi prieigos. Kreipkitės į direktorių, kad jis suteiktų jums prieigą.
     </div>
 <?php endif; ?>
 

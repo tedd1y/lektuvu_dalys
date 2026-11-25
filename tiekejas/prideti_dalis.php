@@ -13,8 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$klaidos) {
         $stmt = $pdo->prepare(
-            'INSERT INTO preke (tiekejo_id, pavadinimas, gamintojas, modelis, kaina, kiekis)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO preke (tiekejo_id, pavadinimas, gamintojas, modelis, kaina, kiekis, pristatymo_laikas)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $_SESSION['naudotojo_id'],
@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             arbaNull($laukai['modelis']),
             $kaina,
             (int)$laukai['kiekis'],
+            (int)$laukai['pristatymo_laikas'],
         ]);
 
         $_SESSION['zinute'] = ['tipas' => 'sekme', 'tekstas' => '„' . $laukai['pavadinimas'] . '“ pridėta prie jūsų siūlomų dalių.'];
@@ -80,6 +81,11 @@ require __DIR__ . '/../includes/header.php';
                 ['required' => true, 'inputmode' => 'decimal', 'placeholder' => '0,00', 'priedas' => '€']); ?>
             <?php laukas('kiekis', 'Kiekis sandėlyje', $laukai['kiekis'], $klaidos,
                 ['required' => true, 'type' => 'number', 'inputmode' => 'numeric', 'placeholder' => '0', 'priedas' => 'vnt.']); ?>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+            <?php laukas('pristatymo_laikas', 'Pristatymo laikas', $laukai['pristatymo_laikas'], $klaidos,
+                ['required' => true, 'type' => 'number', 'inputmode' => 'numeric', 'placeholder' => '5', 'priedas' => 'd. d.']); ?>
         </div>
 
         <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">

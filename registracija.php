@@ -34,8 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$klaidos) {
         $stmt = $pdo->prepare(
-            'INSERT INTO naudotojas (vardas, pavarde, pavadinimas, pastas, slaptazodis, telefonas)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            // Naujas naudotojas teisių neturi – prieigą vėliau suteikia direktorius
+            "INSERT INTO naudotojas (vardas, pavarde, pavadinimas, pastas, slaptazodis, telefonas, tipas)
+             VALUES (?, ?, ?, ?, ?, ?, 'Naudotojas')"
         );
         $stmt->execute([
             $laukai['vardas'],

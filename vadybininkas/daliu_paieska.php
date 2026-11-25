@@ -100,7 +100,7 @@ function nuoroda(array $keisti): string {
     return '?' . http_build_query(array_filter($p, fn($v) => $v !== null && $v !== ''));
 }
 function pristatymas(array $d): string {
-    return $d['pristatymo_laikas'] !== null ? (int)$d['pristatymo_laikas'] . ' d.' : '—';
+    return pristatymoLaikas($d['pristatymo_laikas']);
 }
 function kaina($k): string {
     return number_format((float)$k, 2, ',', ' ') . ' €';

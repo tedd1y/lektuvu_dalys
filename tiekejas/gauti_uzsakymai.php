@@ -78,7 +78,7 @@ $busenos = [
 $filtras = array_key_exists($_GET['busena'] ?? '', $busenos) ? $_GET['busena'] : '';
 
 // Užsakymai, kuriuose yra mano dalių
-$sql = "SELECT u.uzsakymo_id, u.pateikimo_data, u.busena,
+$sql = "SELECT u.uzsakymo_id, u.pateikimo_data, u.pristatymo_data, u.busena,
                v.vardas, v.pavarde, v.pavadinimas AS imone, v.pastas, v.telefonas
         FROM uzsakymas u
         JOIN naudotojas v ON v.naudotojo_id = u.vadybininko_id
@@ -154,6 +154,7 @@ require __DIR__ . '/../includes/header.php';
                 <tr>
                     <th class="px-5 py-3 font-medium">Nr.</th>
                     <th class="px-5 py-3 font-medium">Pateikta</th>
+                    <th class="px-5 py-3 font-medium">Pristatymas</th>
                     <th class="px-5 py-3 font-medium">Užsakovas</th>
                     <th class="px-5 py-3 font-medium">Būsena</th>
                     <th class="px-5 py-3 font-medium text-right">Suma</th>
@@ -170,6 +171,7 @@ require __DIR__ . '/../includes/header.php';
                     <tr class="hover:bg-slate-50">
                         <td class="px-5 py-3 font-semibold"><?= $id ?></td>
                         <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= htmlspecialchars($u['pristatymo_data'] ?? '—') ?></td>
                         <td class="px-5 py-3"><?= htmlspecialchars($u['imone'] ?: $u['vardas'] . ' ' . $u['pavarde']) ?></td>
                         <td class="px-5 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span></td>
                         <td class="px-5 py-3 text-right whitespace-nowrap font-semibold tabular-nums"><?= eur(array_sum(array_column($manos, 'suma'))) ?></td>
@@ -206,7 +208,8 @@ require __DIR__ . '/../includes/header.php';
                 <div>
                     <h2 class="text-lg font-semibold text-slate-800">Užsakymas Nr. <?= $id ?></h2>
                     <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                        <span><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></span>
+                        <span>Pateikta <?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></span>
+                        <?php if ($u['pristatymo_data']): ?><span>Pristatymas <?= htmlspecialchars($u['pristatymo_data']) ?></span><?php endif; ?>
                         <span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span>
                     </div>
                 </div>

@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$klaidos) {
             $stmt = $pdo->prepare(
-                'UPDATE preke SET pavadinimas = ?, gamintojas = ?, modelis = ?, kaina = ?, kiekis = ?
+                'UPDATE preke SET pavadinimas = ?, gamintojas = ?, modelis = ?, kaina = ?, kiekis = ?, pristatymo_laikas = ?
                  WHERE prekes_id = ? AND tiekejo_id = ?'
             );
             $stmt->execute([
@@ -63,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 arbaNull($laukai['modelis']),
                 $kaina,
                 (int)$laukai['kiekis'],
+                (int)$laukai['pristatymo_laikas'],
                 $id,
                 $manoId,
             ]);
@@ -102,6 +103,7 @@ function reiksmes(array $d): array {
         'modelis'     => $d['modelis'] ?? '',
         'kaina'       => number_format((float)$d['kaina'], 2, ',', ''),
         'kiekis'      => (string)$d['kiekis'],
+        'pristatymo_laikas' => $d['pristatymo_laikas'] !== null ? (string)$d['pristatymo_laikas'] : '',
     ];
 }
 
@@ -158,6 +160,7 @@ require __DIR__ . '/../includes/header.php';
                     <th class="px-4 py-3 font-medium">Modelis</th>
                     <th class="px-4 py-3 font-medium text-right">Kaina</th>
                     <th class="px-4 py-3 font-medium text-right">Sandėlyje</th>
+                    <th class="px-4 py-3 font-medium text-right">Pristatymas</th>
                     <th class="px-4 py-3 font-medium text-center">Užsakymuose</th>
                     <th class="px-4 py-3"><span class="sr-only">Veiksmai</span></th>
                 </tr>
@@ -173,6 +176,7 @@ require __DIR__ . '/../includes/header.php';
                         <td class="px-4 py-3 text-right whitespace-nowrap">
                             <?= (int)$d['kiekis'] > 0 ? (int)$d['kiekis'] . ' vnt.' : '<span class="text-red-600">Nėra</span>' ?>
                         </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap text-slate-600"><?= pristatymoLaikas($d['pristatymo_laikas']) ?></td>
                         <td class="px-4 py-3 text-center text-slate-500"><?= (int)$d['uzsakymu'] ?></td>
                         <td class="px-4 py-3 whitespace-nowrap text-right">
                             <div class="flex justify-end gap-1">
@@ -225,6 +229,9 @@ require __DIR__ . '/../includes/header.php';
                     <div class="grid gap-4 sm:grid-cols-2">
                         <?= laukas($id, 'kaina', 'Kaina', $v, $kl, ['inputmode' => 'decimal', 'required' => 'required'], '€') ?>
                         <?= laukas($id, 'kiekis', 'Kiekis sandėlyje', $v, $kl, ['type' => 'number', 'min' => 0, 'required' => 'required'], 'vnt.') ?>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <?= laukas($id, 'pristatymo_laikas', 'Pristatymo laikas', $v, $kl, ['type' => 'number', 'min' => 1, 'required' => 'required'], 'd. d.') ?>
                     </div>
                 </div>
 

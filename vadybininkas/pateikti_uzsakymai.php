@@ -107,7 +107,7 @@ $busenos = [
 ];
 $filtras = array_key_exists($_GET['busena'] ?? '', $busenos) ? $_GET['busena'] : '';
 
-$sql = 'SELECT uzsakymo_id, suma, pateikimo_data, busena FROM uzsakymas WHERE vadybininko_id = ?';
+$sql = 'SELECT uzsakymo_id, suma, pateikimo_data, pristatymo_data, busena FROM uzsakymas WHERE vadybininko_id = ?';
 $params = [$manoId];
 if ($filtras) {
     $sql .= ' AND busena = ?';
@@ -125,7 +125,7 @@ if ($uzsakymai) {
     $vietos = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare(
         "SELECT up.eilutes_id, up.uzsakymo_id, up.kiekis, up.suma,
-                p.pavadinimas, p.gamintojas, p.modelis, p.kiekis AS sandelyje,
+                p.pavadinimas, p.gamintojas, p.modelis, p.kiekis AS sandelyje, p.pristatymo_laikas,
                 COALESCE(n.pavadinimas, CONCAT(n.vardas, ' ', n.pavarde)) AS tiekejas
          FROM uzsakymo_preke up
          JOIN preke p ON p.prekes_id = up.prekes_id
@@ -181,6 +181,7 @@ require __DIR__ . '/../includes/header.php';
                 <tr>
                     <th class="px-5 py-3 font-medium">Nr.</th>
                     <th class="px-5 py-3 font-medium">Pateikta</th>
+                    <th class="px-5 py-3 font-medium">Pristatymo data</th>
                     <th class="px-5 py-3 font-medium">Tiekėjas</th>
                     <th class="px-5 py-3 font-medium">Būsena</th>
                     <th class="px-5 py-3 font-medium text-right">Suma</th>
@@ -198,6 +199,7 @@ require __DIR__ . '/../includes/header.php';
                     <tr class="hover:bg-slate-50">
                         <td class="px-5 py-3 font-semibold"><?= $id ?></td>
                         <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= htmlspecialchars($u['pristatymo_data'] ?? '—') ?></td>
                         <td class="px-5 py-3"><?= htmlspecialchars(implode(', ', $tiekejai) ?: '—') ?></td>
                         <td class="px-5 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span></td>
                         <td class="px-5 py-3 text-right whitespace-nowrap font-semibold tabular-nums"><?= eur($u['suma']) ?></td>
@@ -229,10 +231,7 @@ require __DIR__ . '/../includes/header.php';
             <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-800">Užsakymas Nr. <?= $id ?></h2>
-                    <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                        <span><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></span>
-                        <span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span>
-                    </div>
+                    <span class="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span>
                 </div>
                 <form method="dialog">
                     <button aria-label="Uždaryti" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
@@ -253,6 +252,7 @@ require __DIR__ . '/../includes/header.php';
                             <tr>
                                 <th class="px-6 py-3 font-medium">Dalis</th>
                                 <th class="px-4 py-3 font-medium">Tiekėjas</th>
+                                <th class="px-4 py-3 font-medium text-right">Pristatymas</th>
                                 <th class="px-4 py-3 font-medium text-right">Vnt. kaina</th>
                                 <th class="px-4 py-3 font-medium text-center">Kiekis</th>
                                 <th class="px-6 py-3 font-medium text-right">Suma</th>
@@ -267,6 +267,7 @@ require __DIR__ . '/../includes/header.php';
                                         <div class="text-xs text-slate-500"><?= htmlspecialchars($e['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($e['modelis'] ?? '—') ?></div>
                                     </td>
                                     <td class="px-4 py-3"><?= htmlspecialchars($e['tiekejas']) ?></td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap text-slate-600"><?= pristatymoLaikas($e['pristatymo_laikas']) ?></td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap"><?= eur($vnt) ?></td>
                                     <td class="px-4 py-3">
                                         <?php if ($galimaKeisti): ?>
@@ -287,7 +288,7 @@ require __DIR__ . '/../includes/header.php';
                         </tbody>
                         <tfoot class="border-t border-slate-200">
                             <tr>
-                                <td colspan="4" class="px-6 py-3 text-right text-slate-500">Iš viso</td>
+                                <td colspan="5" class="px-6 py-3 text-right text-slate-500">Iš viso</td>
                                 <td class="px-6 py-3 text-right whitespace-nowrap font-semibold"><?= eur($u['suma']) ?></td>
                             </tr>
                         </tfoot>

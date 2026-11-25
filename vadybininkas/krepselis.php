@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Vadybininkas');
 
@@ -32,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         $vietos = implode(',', array_fill(0, count($kiekiai), '?'));
-        $stmt = $pdo->prepare("SELECT prekes_id, tiekejo_id, pavadinimas, kaina, kiekis FROM preke WHERE prekes_id IN ($vietos) FOR UPDATE");
+        $stmt = $pdo->prepare("SELECT prekes_id, tiekejo_id, pavadinimas, kaina, kiekis, pristatymo_laikas FROM preke WHERE prekes_id IN ($vietos) FOR UPDATE");
         $stmt->execute(array_keys($kiekiai));
         $prekes = array_column($stmt->fetchAll(), null, 'prekes_id');
 
@@ -48,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pagalTiekeja[$prekes[$id]['tiekejo_id']][$id] = $k;
         }
 
-        $naujasUzsakymas = $pdo->prepare("INSERT INTO uzsakymas (vadybininko_id, suma, busena) VALUES (?, ?, 'Pateiktas')");
+        $naujasUzsakymas = $pdo->prepare("INSERT INTO uzsakymas (vadybininko_id, suma, pristatymo_data, busena) VALUES (?, ?, ?, 'Pateiktas')");
         $naujaEilute     = $pdo->prepare('INSERT INTO uzsakymo_preke (uzsakymo_id, prekes_id, kiekis, suma) VALUES (?, ?, ?, ?)');
         $mazintiLikuti   = $pdo->prepare('UPDATE preke SET kiekis = kiekis - ? WHERE prekes_id = ?');
         $sukurti = [];
@@ -58,7 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($eilutes as $id => $k) {
                 $suma += round($k * (float)$prekes[$id]['kaina'], 2);
             }
-            $naujasUzsakymas->execute([$_SESSION['naudotojo_id'], $suma]);
+            // Užsakymas pristatomas, kai atkeliauja ilgiausiai keliaujanti dalis:
+            // max(pristatymo laikų) darbo dienomis nuo šiandien
+            $laikai = array_filter(array_map(fn($id) => $prekes[$id]['pristatymo_laikas'], array_keys($eilutes)), fn($l) => $l !== null);
+            $pristatymoData = $laikai ? poDarboDienu((int)max($laikai))->format('Y-m-d') : null;
+
+            $naujasUzsakymas->execute([$_SESSION['naudotojo_id'], $suma, $pristatymoData]);
             $uzsakymoId = (int)$pdo->lastInsertId();
             $sukurti[] = $uzsakymoId;
 
