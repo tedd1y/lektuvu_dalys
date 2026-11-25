@@ -123,11 +123,7 @@ require __DIR__ . '/../includes/header.php';
                                         <td class="px-5 py-3"><?= htmlspecialchars($p['modelis'] ?? '—') ?></td>
                                         <td class="px-5 py-3 text-right whitespace-nowrap"><?= number_format((float)$p['kaina'], 2, ',', ' ') ?> €</td>
                                         <td class="px-5 py-3 text-right">
-                                            <?php if ((int)$p['kiekis'] > 0): ?>
-                                                <?= (int)$p['kiekis'] ?> vnt.
-                                            <?php else: ?>
-                                                <span class="text-red-600">Nėra</span>
-                                            <?php endif; ?>
+                                            <?= likutis($p) ?>
                                         </td>
                                         <td class="px-5 py-3 text-right">
                                             <?= krepselioMygtukas($p, tiekejoPavadinimas($pasirinktas), true) ?>

@@ -56,6 +56,36 @@ const Krepselis = (() => {
             el.textContent = n;
             el.classList.toggle('hidden', n === 0);
         });
+        atnaujintiLikucius();
+    }
+
+    // Puslapyje rodomas likutis = sandėlyje − jau krepšelyje.
+    // (DB nekeičiama – krepšelis tik naršyklėje; tikras likutis mažėja, kai tiekėjas priima užsakymą.)
+    function atnaujintiLikucius() {
+        const krepselyje = {};
+        gauti().forEach(p => { krepselyje[p.id] = p.kiekis; });
+
+        document.querySelectorAll('[data-likutis]').forEach(el => {
+            const sandelyje = parseInt(el.dataset.sandelyje, 10) || 0;
+            const k = krepselyje[parseInt(el.dataset.likutis, 10)] || 0;
+            const liko = Math.max(0, sandelyje - k);
+            el.innerHTML = (liko > 0 ? liko + ' vnt.' : '<span class="text-red-600">Nėra</span>')
+                + (k > 0 ? '<span class="block text-xs text-sky-700">' + k + ' krepšelyje</span>' : '');
+        });
+
+        document.querySelectorAll('[data-i-krepseli]').forEach(btn => {
+            if (btn.dataset.originalas === undefined) btn.dataset.originalas = btn.innerHTML;
+            const sandelyje = parseInt(btn.dataset.sandelyje, 10) || 0;
+            const k = krepselyje[parseInt(btn.dataset.id, 10)] || 0;
+            const pilnas = k >= sandelyje;
+
+            btn.disabled = pilnas;
+            btn.classList.toggle('opacity-50', pilnas);
+            btn.classList.toggle('cursor-not-allowed', pilnas);
+            if (!btn._laikas) {
+                btn.innerHTML = pilnas ? 'Visi krepšelyje' : btn.dataset.originalas;
+            }
+        });
     }
 
     // „Į krepšelį“ mygtukai: <button data-i-krepseli data-id=".." data-pavadinimas=".." ...>
@@ -87,10 +117,12 @@ const Krepselis = (() => {
     });
 
     function pranesti(btn, tekstas) {
-        if (!btn.dataset.tekstas) btn.dataset.tekstas = btn.innerHTML;
         btn.innerHTML = tekstas;
         clearTimeout(btn._laikas);
-        btn._laikas = setTimeout(() => { btn.innerHTML = btn.dataset.tekstas; }, 1200);
+        btn._laikas = setTimeout(() => {
+            btn._laikas = null;
+            atnaujintiLikucius();   // grąžina tinkamą mygtuko tekstą
+        }, 1200);
     }
 
     // Kitame skirtuke pakeitus krepšelį – atnaujinam ženkliuką ir čia

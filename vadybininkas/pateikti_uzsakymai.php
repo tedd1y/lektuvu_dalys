@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Vadybininkas');
 
@@ -34,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($veiksmas === 'atsaukti') {
+            grazintiLikuti($pdo, $uzsakymoId);
             $pdo->prepare("UPDATE uzsakymas SET busena = 'Atsauktas' WHERE uzsakymo_id = ?")->execute([$uzsakymoId]);
             $pdo->commit();
             grizti('sekme', "Užsakymas Nr. $uzsakymoId atšauktas.", $uzsakymoId);
@@ -43,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nauji = $_POST['kiekis'] ?? [];
 
             $stmt = $pdo->prepare(
-                'SELECT up.eilutes_id, up.kiekis, up.suma, p.pavadinimas, p.kiekis AS sandelyje
+                'SELECT up.eilutes_id, up.prekes_id, up.kiekis, up.suma, p.pavadinimas, p.kiekis AS sandelyje
                  FROM uzsakymo_preke up JOIN preke p ON p.prekes_id = up.prekes_id
-                 WHERE up.uzsakymo_id = ?'
+                 WHERE up.uzsakymo_id = ? FOR UPDATE'
             );
             $stmt->execute([$uzsakymoId]);
             $eilutes = $stmt->fetchAll();
@@ -56,8 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($k < 0) {
                     throw new RuntimeException('Kiekis negali būti neigiamas.');
                 }
-                if ($k > (int)$e['sandelyje']) {
-                    throw new RuntimeException('„' . $e['pavadinimas'] . '“ sandėlyje yra tik ' . (int)$e['sandelyje'] . ' vnt.');
+                // Užsakytas kiekis jau atimtas iš sandėlio, tad galima turėti iki (likutis + dabar užsakyta)
+                $galima = (int)$e['sandelyje'] + (int)$e['kiekis'];
+                if ($k > $galima) {
+                    throw new RuntimeException('„' . $e['pavadinimas'] . '“ galima užsakyti daugiausiai ' . $galima . ' vnt.');
                 }
                 if ($k > 0) $liks++;
             }
@@ -68,8 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Vieneto kaina lieka tokia, kokia buvo pateikiant užsakymą
             $atnaujinti = $pdo->prepare('UPDATE uzsakymo_preke SET kiekis = ?, suma = ? WHERE eilutes_id = ?');
             $istrinti   = $pdo->prepare('DELETE FROM uzsakymo_preke WHERE eilutes_id = ?');
+            $likutis    = $pdo->prepare('UPDATE preke SET kiekis = kiekis - ? WHERE prekes_id = ?');
             foreach ($eilutes as $e) {
                 $k = (int)($nauji[$e['eilutes_id']] ?? $e['kiekis']);
+                $likutis->execute([$k - (int)$e['kiekis'], $e['prekes_id']]);   // padidinus – atimam, sumažinus – grąžinam
                 if ($k === 0) {
                     $istrinti->execute([$e['eilutes_id']]);
                 } else {
@@ -220,7 +226,7 @@ require __DIR__ . '/../includes/header.php';
                                                     <div class="mx-auto flex w-fit items-center rounded-lg border border-slate-300" data-kiekis>
                                                         <button type="button" data-zingsnis="-1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">−</button>
                                                         <input type="number" name="kiekis[<?= (int)$e['eilutes_id'] ?>]"
-                                                               value="<?= (int)$e['kiekis'] ?>" min="0" max="<?= max((int)$e['sandelyje'], (int)$e['kiekis']) ?>"
+                                                               value="<?= (int)$e['kiekis'] ?>" min="0" max="<?= (int)$e['sandelyje'] + (int)$e['kiekis'] ?>"
                                                                class="w-14 border-0 text-center tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
                                                         <button type="button" data-zingsnis="1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">+</button>
                                                     </div>

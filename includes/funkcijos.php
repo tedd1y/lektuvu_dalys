@@ -87,3 +87,21 @@ function arbaNull(string $s): ?string
 {
     return $s !== '' ? $s : null;
 }
+
+// Likutis sandėlyje. krepselis.js atima tai, kas jau įdėta į krepšelį.
+function likutis(array $preke): string
+{
+    $kiekis = (int)$preke['kiekis'];
+    $tekstas = $kiekis > 0 ? $kiekis . ' vnt.' : '<span class="text-red-600">Nėra</span>';
+    return '<span data-likutis="' . (int)$preke['prekes_id'] . '" data-sandelyje="' . $kiekis . '">' . $tekstas . '</span>';
+}
+
+// Atšaukus / atmetus užsakymą – jo dalių kiekiai grąžinami į sandėlį
+function grazintiLikuti(PDO $pdo, int $uzsakymoId): void
+{
+    $pdo->prepare(
+        'UPDATE preke p JOIN uzsakymo_preke up ON up.prekes_id = p.prekes_id
+         SET p.kiekis = p.kiekis + up.kiekis
+         WHERE up.uzsakymo_id = ?'
+    )->execute([$uzsakymoId]);
+}

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Tiekejas');
 
@@ -51,16 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Šio užsakymo būsenos pakeisti į pasirinktą negalima.');
         }
 
-        // Priimant – patikrinam ir sumažinam likučius sandėlyje
-        if ($nauja === 'Priimtas') {
-            $mazinti = $pdo->prepare('UPDATE preke SET kiekis = kiekis - ? WHERE prekes_id = ?');
-            foreach ($eilutes as $e) {
-                if ((int)$e['kiekis'] > (int)$e['sandelyje']) {
-                    throw new RuntimeException('Negalite priimti: „' . $e['pavadinimas'] . '“ sandėlyje yra tik '
-                        . (int)$e['sandelyje'] . ' vnt., o užsakyta ' . (int)$e['kiekis'] . ' vnt. Papildykite likutį arba atmeskite užsakymą.');
-                }
-                $mazinti->execute([(int)$e['kiekis'], $e['prekes_id']]);
-            }
+        // Likutis sumažintas jau pateikiant užsakymą – atmetus jį grąžinam į sandėlį
+        if ($nauja === 'Atsauktas') {
+            grazintiLikuti($pdo, $uzsakymoId);
         }
 
         $pdo->prepare('UPDATE uzsakymas SET busena = ? WHERE uzsakymo_id = ?')->execute([$nauja, $uzsakymoId]);
@@ -192,13 +186,12 @@ require __DIR__ . '/../includes/header.php';
                                     <th class="px-5 py-3 font-medium">Dalis</th>
                                     <th class="px-5 py-3 font-medium text-right">Vnt. kaina</th>
                                     <th class="px-5 py-3 font-medium text-right">Užsakyta</th>
-                                    <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
+                                    <th class="px-5 py-3 font-medium text-right">Liko sandėlyje</th>
                                     <th class="px-5 py-3 font-medium text-right">Suma</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 <?php foreach ($manos as $e): ?>
-                                    <?php $truksta = $u['busena'] === 'Pateiktas' && (int)$e['kiekis'] > (int)$e['sandelyje']; ?>
                                     <tr>
                                         <td class="px-5 py-3">
                                             <div class="font-medium"><?= htmlspecialchars($e['pavadinimas']) ?></div>
@@ -206,9 +199,7 @@ require __DIR__ . '/../includes/header.php';
                                         </td>
                                         <td class="px-5 py-3 text-right whitespace-nowrap"><?= eur((float)$e['suma'] / max(1, (int)$e['kiekis'])) ?></td>
                                         <td class="px-5 py-3 text-right whitespace-nowrap font-medium"><?= (int)$e['kiekis'] ?> vnt.</td>
-                                        <td class="px-5 py-3 text-right whitespace-nowrap <?= $truksta ? 'text-red-600 font-medium' : 'text-slate-500' ?>">
-                                            <?= (int)$e['sandelyje'] ?> vnt.<?= $truksta ? ' ⚠' : '' ?>
-                                        </td>
+                                        <td class="px-5 py-3 text-right whitespace-nowrap text-slate-500"><?= (int)$e['sandelyje'] ?> vnt.</td>
                                         <td class="px-5 py-3 text-right whitespace-nowrap font-medium"><?= eur($e['suma']) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -224,7 +215,7 @@ require __DIR__ . '/../includes/header.php';
                         <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-slate-100 bg-slate-50 rounded-b-xl">
                             <p class="text-xs text-slate-500">
                                 <?= $u['busena'] === 'Pateiktas'
-                                    ? 'Priėmus užsakymą, dalių likutis sandėlyje sumažės. Vadybininkas jo nebegalės keisti.'
+                                    ? 'Užsakytos dalys jau rezervuotos (atimtos iš likučio). Atmetus jos grįš į sandėlį. Priėmus užsakymą, vadybininkas jo nebegalės keisti.'
                                     : 'Kai dalys pristatytos, pažymėkite užsakymą įvykdytu.' ?>
                             </p>
                             <form method="post" class="flex gap-2">

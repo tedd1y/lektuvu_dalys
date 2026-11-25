@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $naujasUzsakymas = $pdo->prepare("INSERT INTO uzsakymas (vadybininko_id, suma, busena) VALUES (?, ?, 'Pateiktas')");
         $naujaEilute     = $pdo->prepare('INSERT INTO uzsakymo_preke (uzsakymo_id, prekes_id, kiekis, suma) VALUES (?, ?, ?, ?)');
+        $mazintiLikuti   = $pdo->prepare('UPDATE preke SET kiekis = kiekis - ? WHERE prekes_id = ?');
         $sukurti = [];
 
         foreach ($pagalTiekeja as $eilutes) {
@@ -63,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             foreach ($eilutes as $id => $k) {
                 $naujaEilute->execute([$uzsakymoId, $id, $k, round($k * (float)$prekes[$id]['kaina'], 2)]);
+                $mazintiLikuti->execute([$k, $id]);   // dalys rezervuojamos iškart pateikus
             }
         }
 

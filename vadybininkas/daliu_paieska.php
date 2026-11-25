@@ -96,9 +96,6 @@ function nuoroda(array $keisti): string {
 function kaina($k): string {
     return number_format((float)$k, 2, ',', ' ') . ' €';
 }
-function kiekis($k): string {
-    return (int)$k > 0 ? (int)$k . ' vnt.' : '<span class="text-red-600">Nėra</span>';
-}
 
 $puslapioPavadinimas = 'Dalių paieška';
 require __DIR__ . '/../includes/header.php';
@@ -167,7 +164,7 @@ require __DIR__ . '/../includes/header.php';
                             <td class="px-5 py-3 text-right whitespace-nowrap <?= (float)$d['kaina'] == (float)$pigiausia && count($visos) > 1 ? 'text-green-700 font-semibold' : '' ?>">
                                 <?= kaina($d['kaina']) ?>
                             </td>
-                            <td class="px-5 py-3 text-right whitespace-nowrap"><?= kiekis($d['kiekis']) ?></td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap"><?= likutis($d) ?></td>
                             <td class="px-5 py-3 text-right"><?= krepselioMygtukas($d, $d['tiekejas'], true) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -205,7 +202,7 @@ require __DIR__ . '/../includes/header.php';
                     </p>
                     <div class="mt-3 flex items-center justify-between text-sm">
                         <span class="text-slate-600"><?= htmlspecialchars($d['tiekejas']) ?></span>
-                        <span><?= kiekis($d['kiekis']) ?></span>
+                        <span><?= likutis($d) ?></span>
                     </div>
                     <p class="mt-3 text-xs text-sky-600">Palyginti su kitais tiekėjais →</p>
                 </a>
