@@ -62,8 +62,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="max-w-2xl">
-    <h1 class="text-2xl font-semibold mb-1">Pridėti siūlomą dalį</h1>
-    <p class="text-slate-500 mb-6">Dalis iškart bus matoma vadybininkams paieškoje ir jūsų tiekėjo puslapyje.</p>
+    <h1 class="text-2xl font-semibold mb-6">Pridėti siūlomą dalį</h1>
 
     <form method="post" novalidate class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-5">
         <?php laukas('pavadinimas', 'Pavadinimas', $laukai['pavadinimas'], $klaidos,

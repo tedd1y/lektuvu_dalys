@@ -22,7 +22,6 @@ $rolesPav = fn(?string $r) => $roliuPav[$r] ?? ($r ?? '—');
 
 $q       = trim($_GET['q'] ?? '');
 $filtras = in_array($_GET['role'] ?? '', $roles, true) ? $_GET['role'] : '';
-$id      = (int)($_GET['id'] ?? 0);
 
 function grizti(string $tipas, string $tekstas): never {
     $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
@@ -37,10 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nauja = $_POST['tipas'] ?? '';
 
     if ($kam === $manoId) {
-        grizti('klaida', 'Savo rolės pakeisti negalite.');
+        grizti('klaida', 'Savo prieigos pakeisti negalite.');
     }
     if (!in_array($nauja, $roles, true)) {
-        grizti('klaida', 'Neteisinga rolė.');
+        grizti('klaida', 'Neteisinga prieiga.');
     }
 
     $stmt = $pdo->prepare('SELECT vardas, pavarde, tipas FROM naudotojas WHERE naudotojo_id = ?');
@@ -50,11 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         grizti('klaida', 'Naudotojas nerastas.');
     }
     if ($n['tipas'] === $nauja) {
-        grizti('klaida', 'Naudotojas jau turi šią rolę.');
+        grizti('klaida', 'Naudotojas jau turi šią prieigą.');
     }
 
     $pdo->prepare('UPDATE naudotojas SET tipas = ? WHERE naudotojo_id = ?')->execute([$nauja, $kam]);
-    grizti('sekme', "{$n['vardas']} {$n['pavarde']}: rolė pakeista iš „{$rolesPav($n['tipas'])}“ į „{$rolesPav($nauja)}“.");
+    grizti('sekme', "{$n['vardas']} {$n['pavarde']}: prieiga pakeista iš „{$rolesPav($n['tipas'])}“ į „{$rolesPav($nauja)}“.");
 }
 
 // --- Peržiūrėti naudotojus ---
@@ -76,33 +75,8 @@ $naudotojai = $stmt->fetchAll();
 
 $kiekPagalRole = $pdo->query('SELECT tipas, COUNT(*) FROM naudotojas GROUP BY tipas')->fetchAll(PDO::FETCH_KEY_PAIR);
 
-// Pasirinktas naudotojas + jo veiklos santrauka
-$pasirinktas = null;
-$veikla = [];
-if ($id) {
-    $stmt = $pdo->prepare('SELECT * FROM naudotojas WHERE naudotojo_id = ?');
-    $stmt->execute([$id]);
-    $pasirinktas = $stmt->fetch() ?: null;
-}
-if ($pasirinktas) {
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM preke WHERE tiekejo_id = ?');
-    $stmt->execute([$id]);
-    $veikla['dalys'] = (int)$stmt->fetchColumn();
-
-    $stmt = $pdo->prepare("SELECT COUNT(*), COALESCE(SUM(CASE WHEN busena <> 'Atsauktas' THEN suma END), 0) FROM uzsakymas WHERE vadybininko_id = ?");
-    $stmt->execute([$id]);
-    [$veikla['uzsakymai'], $veikla['uzsakymu_suma']] = $stmt->fetch(PDO::FETCH_NUM);
-
-    $stmt = $pdo->prepare(
-        "SELECT COUNT(DISTINCT up.uzsakymo_id) FROM uzsakymo_preke up
-         JOIN preke p ON p.prekes_id = up.prekes_id WHERE p.tiekejo_id = ?"
-    );
-    $stmt->execute([$id]);
-    $veikla['gauti'] = (int)$stmt->fetchColumn();
-}
-
 function nuoroda(array $keisti): string {
-    $p = array_merge(['q' => $_GET['q'] ?? null, 'role' => $_GET['role'] ?? null, 'id' => $_GET['id'] ?? null], $keisti);
+    $p = array_merge(['q' => $_GET['q'] ?? null, 'role' => $_GET['role'] ?? null], $keisti);
     return '?' . http_build_query(array_filter($p, fn($v) => $v !== null && $v !== ''));
 }
 
@@ -120,12 +94,12 @@ require __DIR__ . '/../includes/header.php';
         <button class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50">Ieškoti</button>
     </form>
     <nav class="flex flex-wrap gap-2 text-sm">
-        <a href="<?= htmlspecialchars(nuoroda(['role' => null, 'id' => null])) ?>"
+        <a href="<?= htmlspecialchars(nuoroda(['role' => null])) ?>"
            class="rounded-full px-4 py-1.5 border <?= $filtras === '' ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50' ?>">
             Visi <span class="opacity-60"><?= array_sum($kiekPagalRole) ?></span>
         </a>
         <?php foreach ($roles as $r): ?>
-            <a href="<?= htmlspecialchars(nuoroda(['role' => $r, 'id' => null])) ?>"
+            <a href="<?= htmlspecialchars(nuoroda(['role' => $r])) ?>"
                class="rounded-full px-4 py-1.5 border <?= $filtras === $r ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50' ?>">
                 <?= $rolesPav($r) ?> <span class="opacity-60"><?= (int)($kiekPagalRole[$r] ?? 0) ?></span>
             </a>
@@ -133,101 +107,104 @@ require __DIR__ . '/../includes/header.php';
     </nav>
 </div>
 
-<?php if ($id && !$pasirinktas): ?>
-    <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">Naudotojas nerastas.</div>
+<?php if (!$naudotojai): ?>
+    <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">Naudotojų nerasta.</div>
+<?php else: ?>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-600">
+                <tr>
+                    <th class="px-5 py-3 font-medium">Vardas, pavardė</th>
+                    <th class="px-5 py-3 font-medium">Įmonė</th>
+                    <th class="px-5 py-3 font-medium">El. paštas</th>
+                    <th class="px-5 py-3 font-medium">Telefonas</th>
+                    <th class="px-5 py-3 font-medium">Prieiga</th>
+                    <th class="px-5 py-3 w-16"><span class="sr-only">Keisti prieigą</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php foreach ($naudotojai as $n): ?>
+                    <?php $nid = (int)$n['naudotojo_id']; $asPats = $nid === $manoId; ?>
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-5 py-3 font-medium text-slate-800 whitespace-nowrap">
+                            <?= htmlspecialchars($n['vardas'] . ' ' . $n['pavarde']) ?>
+                            <?php if ($asPats): ?><span class="ml-1 text-xs font-normal text-slate-400">(jūs)</span><?php endif; ?>
+                        </td>
+                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($n['pavadinimas'] ?? '—') ?></td>
+                        <td class="px-5 py-3">
+                            <a href="mailto:<?= htmlspecialchars($n['pastas']) ?>" class="text-sky-700 hover:underline"><?= htmlspecialchars($n['pastas']) ?></a>
+                        </td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= htmlspecialchars($n['telefonas'] ?? '—') ?></td>
+                        <td class="px-5 py-3">
+                            <span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $roliuSpalva[$n['tipas']] ?? 'bg-slate-100 text-slate-700' ?>">
+                                <?= $rolesPav($n['tipas']) ?>
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-right">
+                            <button type="button" <?= $asPats ? 'disabled' : 'data-atidaryti="role-' . $nid . '"' ?>
+                                    aria-label="Keisti <?= htmlspecialchars($n['vardas'] . ' ' . $n['pavarde']) ?> prieigą"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:border-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- «extend» Pakeisti naudotojo teisę – popup langai -->
+    <?php foreach ($naudotojai as $n): ?>
+        <?php $nid = (int)$n['naudotojo_id']; if ($nid === $manoId) continue; ?>
+        <dialog id="role-<?= $nid ?>" class="w-full max-w-md rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50">
+            <form method="post" action="<?= htmlspecialchars(nuoroda([])) ?>"
+                  onsubmit="return confirm('Pakeisti naudotojo prieigą į „' + this.tipas.options[this.tipas.selectedIndex].text + '“?');">
+                <input type="hidden" name="naudotojo_id" value="<?= $nid ?>">
+
+                <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-800"><?= htmlspecialchars($n['vardas'] . ' ' . $n['pavarde']) ?></h2>
+                        <p class="text-sm text-slate-500"><?= htmlspecialchars($n['pastas']) ?></p>
+                    </div>
+                    <button type="button" data-uzdaryti aria-label="Uždaryti" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5">
+                    <label for="tipas-<?= $nid ?>" class="block text-sm font-medium text-slate-700 mb-1">Prieiga</label>
+                    <select id="tipas-<?= $nid ?>" name="tipas" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <?php foreach ($roles as $r): ?>
+                            <option value="<?= $r ?>" <?= $r === $n['tipas'] ? 'selected' : '' ?>><?= $rolesPav($r) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+                    <button type="button" data-uzdaryti class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-200">Atšaukti</button>
+                    <button class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">Išsaugoti</button>
+                </div>
+            </form>
+        </dialog>
+    <?php endforeach; ?>
 <?php endif; ?>
 
-<div class="grid gap-6 lg:grid-cols-5">
+<script>
+document.addEventListener('click', e => {
+    const atidaryti = e.target.closest('[data-atidaryti]');
+    if (atidaryti) document.getElementById(atidaryti.dataset.atidaryti)?.showModal();
 
-    <!-- Sąrašas -->
-    <section class="lg:col-span-3">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <?php if (!$naudotojai): ?>
-                <p class="p-5 text-slate-500">Naudotojų nerasta.</p>
-            <?php else: ?>
-                <ul class="divide-y divide-slate-100">
-                    <?php foreach ($naudotojai as $n): ?>
-                        <?php $aktyvus = (int)$n['naudotojo_id'] === $id; ?>
-                        <li>
-                            <a href="<?= htmlspecialchars(nuoroda(['id' => (int)$n['naudotojo_id']])) ?>"
-                               class="flex items-center gap-4 px-5 py-3 border-l-4 <?= $aktyvus ? 'bg-sky-50 border-sky-500' : 'border-transparent hover:bg-slate-50' ?>">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
-                                    <?= htmlspecialchars(mb_substr($n['vardas'], 0, 1) . mb_substr($n['pavarde'], 0, 1)) ?>
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block font-medium truncate">
-                                        <?= htmlspecialchars($n['vardas'] . ' ' . $n['pavarde']) ?>
-                                        <?php if ((int)$n['naudotojo_id'] === $manoId): ?><span class="text-xs text-slate-400">(jūs)</span><?php endif; ?>
-                                    </span>
-                                    <span class="block text-sm text-slate-500 truncate">
-                                        <?= htmlspecialchars($n['pastas']) ?><?= $n['pavadinimas'] ? ' · ' . htmlspecialchars($n['pavadinimas']) : '' ?>
-                                    </span>
-                                </span>
-                                <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium <?= $roliuSpalva[$n['tipas']] ?? 'bg-slate-100 text-slate-700' ?>">
-                                    <?= $rolesPav($n['tipas']) ?>
-                                </span>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <!-- Pasirinktas naudotojas -->
-    <section class="lg:col-span-2">
-        <?php if (!$pasirinktas): ?>
-            <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">
-                Pasirinkite naudotoją, kad pamatytumėte jo duomenis ir galėtumėte pakeisti rolę.
-            </div>
-        <?php else: ?>
-            <?php $p = $pasirinktas; $asPats = (int)$p['naudotojo_id'] === $manoId; ?>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 lg:sticky lg:top-4">
-                <div class="px-5 py-4 border-b border-slate-200">
-                    <h2 class="text-lg font-semibold"><?= htmlspecialchars($p['vardas'] . ' ' . $p['pavarde']) ?></h2>
-                    <span class="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium <?= $roliuSpalva[$p['tipas']] ?? 'bg-slate-100 text-slate-700' ?>">
-                        <?= $rolesPav($p['tipas']) ?>
-                    </span>
-                </div>
-
-                <dl class="px-5 py-4 space-y-2 text-sm">
-                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Įmonė</dt><dd class="text-right"><?= htmlspecialchars($p['pavadinimas'] ?? '—') ?></dd></div>
-                    <div class="flex justify-between gap-4"><dt class="text-slate-500">El. paštas</dt><dd class="text-right break-all"><?= htmlspecialchars($p['pastas']) ?></dd></div>
-                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Telefonas</dt><dd class="text-right"><?= htmlspecialchars($p['telefonas'] ?? '—') ?></dd></div>
-                </dl>
-
-                <dl class="grid grid-cols-3 border-y border-slate-200 text-center text-sm">
-                    <div class="px-2 py-3"><dd class="text-lg font-semibold"><?= $veikla['dalys'] ?></dd><dt class="text-xs text-slate-500">siūlomų dalių</dt></div>
-                    <div class="px-2 py-3 border-x border-slate-200"><dd class="text-lg font-semibold"><?= (int)$veikla['uzsakymai'] ?></dd><dt class="text-xs text-slate-500">pateiktų užsakymų</dt></div>
-                    <div class="px-2 py-3"><dd class="text-lg font-semibold"><?= $veikla['gauti'] ?></dd><dt class="text-xs text-slate-500">gautų užsakymų</dt></div>
-                </dl>
-
-                <div class="px-5 py-4">
-                    <?php if ($asPats): ?>
-                        <p class="text-sm text-slate-500">Savo rolės pakeisti negalite.</p>
-                    <?php else: ?>
-                        <form method="post" class="space-y-3"
-                              onsubmit="return confirm('Pakeisti naudotojo rolę į „' + this.tipas.options[this.tipas.selectedIndex].text + '“?');">
-                            <input type="hidden" name="naudotojo_id" value="<?= (int)$p['naudotojo_id'] ?>">
-                            <label for="tipas" class="block text-sm font-medium text-slate-700">Pakeisti rolę</label>
-                            <div class="flex gap-2">
-                                <select id="tipas" name="tipas" class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2">
-                                    <?php foreach ($roles as $r): ?>
-                                        <option value="<?= $r ?>" <?= $r === $p['tipas'] ? 'selected' : '' ?>><?= $rolesPav($r) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">Išsaugoti</button>
-                            </div>
-                            <?php if ($veikla['dalys'] > 0 && $p['tipas'] === 'Tiekejas'): ?>
-                                <p class="text-xs text-amber-700">Šis tiekėjas siūlo <?= $veikla['dalys'] ?> dal. Pakeitus rolę jos liks sistemoje, bet tiekėjas nebegalės jų tvarkyti.</p>
-                            <?php endif; ?>
-                            <p class="text-xs text-slate-500">Pakeitimas įsigalioja iškart: naudotojui nereikia jungtis iš naujo.</p>
-                        </form>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-    </section>
-</div>
+    const uzdaryti = e.target.closest('[data-uzdaryti]');
+    if (uzdaryti) uzdaryti.closest('dialog')?.close();
+});
+// Uždaryti paspaudus šalia lango
+document.querySelectorAll('dialog').forEach(d => {
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+});
+</script>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

@@ -54,7 +54,7 @@ unset($_SESSION['zinute']);
 <header class="bg-white border-b border-slate-200">
     <div class="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4 py-3">
         <div class="flex flex-wrap items-center gap-6">
-            <a href="<?= $base ?>/index.php" class="font-semibold text-sky-700">✈ Lėktuvo dalys</a>
+            <a href="<?= $base ?>/index.php" class="font-semibold text-sky-700">✈ Lėktuvų dalys</a>
 
             <nav class="flex flex-wrap gap-1">
                 <?php foreach ($nuorodos as $tekstas => $kelias): ?>

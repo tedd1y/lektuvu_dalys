@@ -139,8 +139,7 @@ require __DIR__ . '/../includes/header.php';
     <section class="mb-10 bg-white rounded-xl shadow-sm border border-sky-200">
         <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200">
             <div>
-                <h2 class="text-lg font-semibold">Palyginimas: <?= htmlspecialchars($pasirinkta['pavadinimas']) ?></h2>
-                <p class="text-sm text-slate-500">Pasirinkta dalis ir panašios kitų tiekėjų dalys</p>
+                <h2 class="text-lg font-semibold">Lyginamos prekės</h2>
             </div>
             <a href="<?= htmlspecialchars(nuoroda(['dalis' => null])) ?>" class="text-sm text-slate-500 hover:text-slate-800">✕ Uždaryti</a>
         </div>
@@ -194,8 +193,8 @@ require __DIR__ . '/../includes/header.php';
 <?php endif; ?>
 
 <!-- Rezultatai -->
-<h2 class="text-sm font-medium uppercase tracking-wide text-slate-500 mb-3">
-    <?= $q !== '' ? 'Rasta dalių: ' . count($dalys) : 'Visos dalys: ' . count($dalys) ?>
+<h2 class="text-lg font-semibold mb-3">
+    <?= $q !== '' ? 'Rasta dalių: ' . count($dalys) : 'Visos dalys' ?>
 </h2>
 
 <?php if (!$dalys): ?>

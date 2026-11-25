@@ -97,31 +97,44 @@ require __DIR__ . '/../includes/header.php';
     <a href="daliu_paieska.php" class="text-sky-600 hover:underline">Ieškoti dalių →</a>
 </div>
 
-<div id="turinys" class="hidden grid gap-6 lg:grid-cols-3">
-    <section class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <ul id="eilutes" class="divide-y divide-slate-100"></ul>
-    </section>
+<div id="turinys" class="hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-600">
+                <tr>
+                    <th class="px-5 py-3 font-medium">Dalis</th>
+                    <th class="px-5 py-3 font-medium">Tiekėjas</th>
+                    <th class="px-5 py-3 font-medium text-right">Vnt. kaina</th>
+                    <th class="px-5 py-3 font-medium text-center">Kiekis</th>
+                    <th class="px-5 py-3 font-medium text-right">Suma</th>
+                    <th class="px-5 py-3 w-12"><span class="sr-only">Pašalinti</span></th>
+                </tr>
+            </thead>
+            <tbody id="eilutes" class="divide-y divide-slate-100"></tbody>
+            <tfoot class="border-t-2 border-slate-200 bg-slate-50">
+                <tr>
+                    <td colspan="3" class="px-5 py-3 font-semibold">Iš viso</td>
+                    <td id="viso-vnt" class="px-5 py-3 text-center font-semibold tabular-nums"></td>
+                    <td id="viso-suma" class="px-5 py-3 text-right font-semibold tabular-nums whitespace-nowrap"></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 
-    <aside class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-fit">
-        <h2 class="font-semibold mb-4">Užsakymo suvestinė</h2>
-        <dl class="space-y-2 text-sm">
-            <div class="flex justify-between"><dt class="text-slate-500">Dalių</dt><dd id="viso-vnt"></dd></div>
-            <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold">
-                <dt>Iš viso</dt><dd id="viso-suma"></dd>
-            </div>
-        </dl>
-        <p class="mt-2 text-xs text-slate-400">Galutinė suma apskaičiuojama pagal tuo metu galiojančias kainas. Jei krepšelyje yra kelių tiekėjų dalių, kiekvienam tiekėjui sukuriamas atskiras užsakymas.</p>
-
-        <form method="post" id="uzsakymo-forma" class="mt-5">
-            <input type="hidden" name="krepselis" id="krepselio-duomenys">
-            <button class="w-full rounded-lg bg-sky-600 px-4 py-2.5 font-medium text-white hover:bg-sky-700">
-                Pateikti užsakymą
+    <div class="mt-4 flex justify-end">
+        <div class="flex gap-2">
+            <button type="button" id="isvalyti" class="rounded-lg px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-200">
+                Išvalyti krepšelį
             </button>
-        </form>
-        <button type="button" id="isvalyti" class="mt-2 w-full rounded-lg px-4 py-2 text-sm text-slate-500 hover:bg-slate-100">
-            Išvalyti krepšelį
-        </button>
-    </aside>
+            <form method="post" id="uzsakymo-forma">
+                <input type="hidden" name="krepselis" id="krepselio-duomenys">
+                <button class="rounded-lg bg-sky-600 px-5 py-2.5 font-medium text-white hover:bg-sky-700">
+                    Pateikti užsakymą
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -139,25 +152,27 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('turinys').classList.toggle('hidden', prekes.length === 0);
 
         document.getElementById('eilutes').innerHTML = prekes.map(p => `
-            <li class="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
-                <div class="flex-1 min-w-0">
-                    <div class="font-medium">${esc(p.pavadinimas)}</div>
-                    <div class="text-sm text-slate-500">${esc(p.gamintojas || '—')} · ${esc(p.modelis || '—')}</div>
-                    <div class="text-sm text-slate-500">Tiekėjas: ${esc(p.tiekejas)}</div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center rounded-lg border border-slate-300">
-                        <button type="button" data-minus="${p.id}" class="px-3 py-1.5 text-lg leading-none hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent" ${p.kiekis <= 1 ? 'disabled' : ''}>−</button>
+            <tr class="hover:bg-slate-50">
+                <td class="px-5 py-3">
+                    <div class="font-medium text-slate-800">${esc(p.pavadinimas)}</div>
+                    <div class="text-xs text-slate-500">${esc(p.gamintojas || '—')} · ${esc(p.modelis || '—')}</div>
+                </td>
+                <td class="px-5 py-3 text-slate-600">${esc(p.tiekejas)}</td>
+                <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums">${eur(p.kaina)}</td>
+                <td class="px-5 py-3">
+                    <div class="mx-auto flex w-fit items-center rounded-lg border border-slate-300">
+                        <button type="button" data-minus="${p.id}" aria-label="Mažinti" class="px-3 py-1 text-lg leading-none hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent" ${p.kiekis <= 1 ? 'disabled' : ''}>−</button>
                         <span class="w-10 text-center tabular-nums">${p.kiekis}</span>
-                        <button type="button" data-plius="${p.id}" class="px-3 py-1.5 text-lg leading-none hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent" ${p.kiekis >= p.sandelyje ? 'disabled' : ''}>+</button>
+                        <button type="button" data-plius="${p.id}" aria-label="Didinti" class="px-3 py-1 text-lg leading-none hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent" ${p.kiekis >= p.sandelyje ? 'disabled' : ''}>+</button>
                     </div>
-                    <div class="w-28 text-right">
-                        <div class="font-semibold">${eur(p.kaina * p.kiekis)}</div>
-                        <div class="text-xs text-slate-400">${eur(p.kaina)} / vnt.</div>
-                    </div>
-                    <button type="button" data-salinti="${p.id}" title="Pašalinti" class="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600">✕</button>
-                </div>
-            </li>`).join('');
+                </td>
+                <td class="px-5 py-3 text-right whitespace-nowrap tabular-nums font-medium">${eur(p.kaina * p.kiekis)}</td>
+                <td class="px-5 py-3 text-right">
+                    <button type="button" data-salinti="${p.id}" aria-label="Pašalinti" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                </td>
+            </tr>`).join('');
 
         document.getElementById('viso-vnt').textContent = prekes.reduce((s, p) => s + p.kiekis, 0) + ' vnt.';
         document.getElementById('viso-suma').textContent = eur(prekes.reduce((s, p) => s + p.kaina * p.kiekis, 0));

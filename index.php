@@ -30,16 +30,21 @@ require __DIR__ . '/includes/header.php';
 <h1 class="text-2xl font-semibold mb-6">Pasirinkite veiksmą</h1>
 
 <?php if ($mano): ?>
-
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul class="max-w-2xl divide-y divide-slate-100 rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
         <?php foreach ($mano as [$pavadinimas, $aprasymas, $nuoroda]): ?>
-            <a href="<?= htmlspecialchars($nuoroda) ?>"
-               class="block rounded-xl bg-white p-5 shadow-sm border border-slate-200 hover:border-sky-400 hover:shadow transition">
-                <h2 class="font-semibold text-sky-700 mb-1"><?= htmlspecialchars($pavadinimas) ?></h2>
-                <p class="text-sm text-slate-600"><?= htmlspecialchars($aprasymas) ?></p>
-            </a>
+            <li>
+                <a href="<?= htmlspecialchars($nuoroda) ?>" class="flex items-center justify-between gap-4 px-5 py-4 hover:bg-slate-50">
+                    <span>
+                        <span class="block font-medium text-slate-800"><?= htmlspecialchars($pavadinimas) ?></span>
+                        <span class="block text-sm text-slate-500"><?= htmlspecialchars($aprasymas) ?></span>
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+                    </svg>
+                </a>
+            </li>
         <?php endforeach; ?>
-    </div>
+    </ul>
 <?php else: ?>
     <div class="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-5 text-amber-800">
         Jūsų paskyra sukurta, tačiau dar neturi teisių. Kreipkitės į direktorių, kad jis suteiktų jums rolę.

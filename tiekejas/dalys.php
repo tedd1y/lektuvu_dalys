@@ -22,8 +22,8 @@ function manoDalis(PDO $pdo, int $id, int $manoId): ?array {
     return $stmt->fetch() ?: null;
 }
 
-$redaguojamaId = (int)($_GET['redaguoti'] ?? 0);
-$laukai  = null;   // redaguojamos dalies reikšmės formoje
+$redaguojamaId = 0;     // > 0, kai išsaugant buvo klaidų – tą popup atidarom iš naujo
+$laukai  = null;   // tos dalies įvestos reikšmės
 $klaidos = [];
 
 // --- Veiksmai ---
@@ -90,63 +90,55 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $dalys = $stmt->fetchAll();
 
-// Redaguojamos dalies pradinės reikšmės (jei dar ne iš POST)
-if ($redaguojamaId && $laukai === null) {
-    $d = manoDalis($pdo, $redaguojamaId, $manoId);
-    if ($d) {
-        $laukai = [
-            'pavadinimas' => $d['pavadinimas'],
-            'gamintojas'  => $d['gamintojas'] ?? '',
-            'modelis'     => $d['modelis'] ?? '',
-            'kaina'       => number_format((float)$d['kaina'], 2, ',', ''),
-            'kiekis'      => (string)$d['kiekis'],
-        ];
-    } else {
-        $redaguojamaId = 0;
-    }
-}
-
 function eur($k): string {
     return number_format((float)$k, 2, ',', ' ') . ' €';
 }
 
-// Įvesties laukas redaguojamoje eilutėje
-function ivestis(string $name, array $laukai, array $klaidos, string $klases = '', array $attr = []): string {
+// Formos reikšmės iš DB eilutės
+function reiksmes(array $d): array {
+    return [
+        'pavadinimas' => $d['pavadinimas'],
+        'gamintojas'  => $d['gamintojas'] ?? '',
+        'modelis'     => $d['modelis'] ?? '',
+        'kaina'       => number_format((float)$d['kaina'], 2, ',', ''),
+        'kiekis'      => (string)$d['kiekis'],
+    ];
+}
+
+// Laukas popup formoje (su klaida po juo)
+function laukas(int $id, string $name, string $label, array $laukai, array $klaidos, array $attr = [], string $priedas = ''): string {
     $klaida = $klaidos[$name] ?? null;
     $papildomi = '';
     foreach ($attr as $k => $v) {
         $papildomi .= " $k=\"" . htmlspecialchars((string)$v) . '"';
     }
-    $html = '<input form="redaguoti-forma" name="' . $name . '" value="' . htmlspecialchars($laukai[$name]) . '"' . $papildomi
-          . ' class="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 ' . $klases . ' '
+    $privalomas = isset($attr['required']);
+    $html = '<div><label for="' . $name . '-' . $id . '" class="block text-sm font-medium text-slate-700 mb-1">' . htmlspecialchars($label)
+          . ($privalomas ? ' <span class="text-red-500">*</span>' : '') . '</label><div class="relative">'
+          . '<input id="' . $name . '-' . $id . '" name="' . $name . '" value="' . htmlspecialchars($laukai[$name]) . '"' . $papildomi
+          . ' class="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 ' . ($priedas ? 'pr-12 ' : '')
           . ($klaida ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-sky-500') . '">';
-    if ($klaida) {
-        $html .= '<p class="mt-1 text-xs text-red-600 font-normal">' . htmlspecialchars($klaida) . '</p>';
+    if ($priedas) {
+        $html .= '<span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">' . $priedas . '</span>';
     }
-    return $html;
+    $html .= '</div>';
+    if ($klaida) {
+        $html .= '<p class="mt-1 text-sm text-red-600">' . htmlspecialchars($klaida) . '</p>';
+    }
+    return $html . '</div>';
 }
 
 $puslapioPavadinimas = 'Mano dalys';
 require __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-    <h1 class="text-2xl font-semibold">Mano siūlomos dalys</h1>
-    <a href="prideti_dalis.php" class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">+ Pridėti dalį</a>
-</div>
+<h1 class="text-2xl font-semibold mb-6">Mano siūlomos dalys</h1>
 
 <form method="get" class="mb-6 flex gap-3 max-w-xl">
     <input type="search" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Ieškoti tarp savo dalių…"
            class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500">
-    <button class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50">Ieškoti</button>
+    <button class="rounded-lg bg-sky-600 px-5 py-2 text-sm font-medium text-white hover:bg-sky-700">Ieškoti</button>
 </form>
-
-<?php if ($redaguojamaId): ?>
-    <form id="redaguoti-forma" method="post" action="dalys.php<?= $q !== '' ? '?q=' . htmlspecialchars(urlencode($q)) : '' ?>" novalidate>
-        <input type="hidden" name="veiksmas" value="redaguoti">
-        <input type="hidden" name="prekes_id" value="<?= $redaguojamaId ?>">
-    </form>
-<?php endif; ?>
 
 <?php if (!$dalys): ?>
     <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">
@@ -167,62 +159,98 @@ require __DIR__ . '/../includes/header.php';
                     <th class="px-4 py-3 font-medium text-right">Kaina</th>
                     <th class="px-4 py-3 font-medium text-right">Sandėlyje</th>
                     <th class="px-4 py-3 font-medium text-center">Užsakymuose</th>
-                    <th class="px-4 py-3"></th>
+                    <th class="px-4 py-3"><span class="sr-only">Veiksmai</span></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 <?php foreach ($dalys as $d): ?>
                     <?php $id = (int)$d['prekes_id']; ?>
-
-                    <?php if ($id === $redaguojamaId): ?>
-                        <!-- Redagavimo eilutė -->
-                        <tr id="d<?= $id ?>" class="bg-sky-50 align-top">
-                            <td class="px-4 py-3 min-w-[12rem]"><?= ivestis('pavadinimas', $laukai, $klaidos, '', ['maxlength' => 100, 'required' => 'required', 'autofocus' => 'autofocus']) ?></td>
-                            <td class="px-4 py-3 min-w-[8rem]"><?= ivestis('gamintojas', $laukai, $klaidos, '', ['maxlength' => 100]) ?></td>
-                            <td class="px-4 py-3 min-w-[8rem]"><?= ivestis('modelis', $laukai, $klaidos, '', ['maxlength' => 100]) ?></td>
-                            <td class="px-4 py-3 w-32"><?= ivestis('kaina', $laukai, $klaidos, 'text-right', ['inputmode' => 'decimal']) ?></td>
-                            <td class="px-4 py-3 w-28"><?= ivestis('kiekis', $laukai, $klaidos, 'text-right', ['type' => 'number', 'min' => 0]) ?></td>
-                            <td class="px-4 py-3 text-center text-slate-500 pt-5"><?= (int)$d['uzsakymu'] ?></td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right">
-                                <button form="redaguoti-forma" class="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700">Išsaugoti</button>
-                                <a href="dalys.php<?= $q !== '' ? '?q=' . htmlspecialchars(urlencode($q)) : '' ?>#d<?= $id ?>"
-                                   class="ml-1 rounded-md px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200">Atšaukti</a>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <tr id="d<?= $id ?>" class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-medium"><?= htmlspecialchars($d['pavadinimas']) ?></td>
-                            <td class="px-4 py-3"><?= htmlspecialchars($d['gamintojas'] ?? '—') ?></td>
-                            <td class="px-4 py-3"><?= htmlspecialchars($d['modelis'] ?? '—') ?></td>
-                            <td class="px-4 py-3 text-right whitespace-nowrap"><?= eur($d['kaina']) ?></td>
-                            <td class="px-4 py-3 text-right whitespace-nowrap">
-                                <?= (int)$d['kiekis'] > 0 ? (int)$d['kiekis'] . ' vnt.' : '<span class="text-red-600">Nėra</span>' ?>
-                            </td>
-                            <td class="px-4 py-3 text-center text-slate-500"><?= (int)$d['uzsakymu'] ?></td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right">
-                                <a href="?<?= htmlspecialchars(http_build_query(array_filter(['q' => $q, 'redaguoti' => $id]))) ?>#d<?= $id ?>"
-                                   class="rounded-md px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-50">Redaguoti</a>
+                    <tr id="d<?= $id ?>" class="hover:bg-slate-50">
+                        <td class="px-4 py-3 font-medium"><?= htmlspecialchars($d['pavadinimas']) ?></td>
+                        <td class="px-4 py-3"><?= htmlspecialchars($d['gamintojas'] ?? '—') ?></td>
+                        <td class="px-4 py-3"><?= htmlspecialchars($d['modelis'] ?? '—') ?></td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap"><?= eur($d['kaina']) ?></td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <?= (int)$d['kiekis'] > 0 ? (int)$d['kiekis'] . ' vnt.' : '<span class="text-red-600">Nėra</span>' ?>
+                        </td>
+                        <td class="px-4 py-3 text-center text-slate-500"><?= (int)$d['uzsakymu'] ?></td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right">
+                            <div class="flex justify-end gap-1">
+                                <button type="button" data-atidaryti="redaguoti-<?= $id ?>"
+                                        aria-label="Redaguoti „<?= htmlspecialchars($d['pavadinimas']) ?>“" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg></button>
                                 <?php if ((int)$d['uzsakymu'] === 0): ?>
-                                    <form method="post" class="inline"
+                                    <form method="post"
                                           onsubmit="return confirm('Ar tikrai norite ištrinti „<?= htmlspecialchars(addslashes($d['pavadinimas'])) ?>“?');">
                                         <input type="hidden" name="veiksmas" value="istrinti">
                                         <input type="hidden" name="prekes_id" value="<?= $id ?>">
-                                        <button class="rounded-md px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">Ištrinti</button>
+                                        <button aria-label="Ištrinti „<?= htmlspecialchars($d['pavadinimas']) ?>“" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                     </form>
                                 <?php else: ?>
                                     <span title="Dalis yra užsakymuose, todėl jos ištrinti negalima. Nustatykite kiekį 0."
-                                          class="cursor-help rounded-md px-3 py-1.5 text-xs text-slate-300">Ištrinti</span>
+                                          class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-300 cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></span>
                                 <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                            </div>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-    <p class="mt-3 text-xs text-slate-500">
-        Pakeitus kainą, jau pateiktų užsakymų sumos nesikeičia. Dalies, kuri yra užsakymuose, ištrinti negalima. Jei nebenorite jos siūlyti, nustatykite kiekį 0.
-    </p>
+
+    <!-- Redagavimo popup langai -->
+    <?php foreach ($dalys as $d): ?>
+        <?php
+        $id  = (int)$d['prekes_id'];
+        $suKlaidomis = $id === $redaguojamaId;
+        $v   = $suKlaidomis ? $laukai : reiksmes($d);
+        $kl  = $suKlaidomis ? $klaidos : [];
+        ?>
+        <dialog id="redaguoti-<?= $id ?>" <?= $suKlaidomis ? 'data-atidaryti-iskart' : '' ?>
+                class="w-full max-w-xl rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50">
+            <form method="post" action="dalys.php<?= $q !== '' ? '?q=' . htmlspecialchars(urlencode($q)) : '' ?>" novalidate>
+                <input type="hidden" name="veiksmas" value="redaguoti">
+                <input type="hidden" name="prekes_id" value="<?= $id ?>">
+
+                <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
+                    <h2 class="text-lg font-semibold text-slate-800">Redaguoti dalį</h2>
+                    <button type="button" data-uzdaryti aria-label="Uždaryti" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
+                </div>
+
+                <div class="px-6 py-5 space-y-4">
+                    <?= laukas($id, 'pavadinimas', 'Pavadinimas', $v, $kl, ['maxlength' => 100, 'required' => 'required']) ?>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <?= laukas($id, 'gamintojas', 'Gamintojas', $v, $kl, ['maxlength' => 100]) ?>
+                        <?= laukas($id, 'modelis', 'Modelis', $v, $kl, ['maxlength' => 100]) ?>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <?= laukas($id, 'kaina', 'Kaina', $v, $kl, ['inputmode' => 'decimal', 'required' => 'required'], '€') ?>
+                        <?= laukas($id, 'kiekis', 'Kiekis sandėlyje', $v, $kl, ['type' => 'number', 'min' => 0, 'required' => 'required'], 'vnt.') ?>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+                    <button type="button" data-uzdaryti class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-200">Atšaukti</button>
+                    <button class="rounded-lg bg-sky-600 px-5 py-2 text-sm font-medium text-white hover:bg-sky-700">Išsaugoti</button>
+                </div>
+            </form>
+        </dialog>
+    <?php endforeach; ?>
 <?php endif; ?>
+
+<script>
+document.addEventListener('click', e => {
+    const atidaryti = e.target.closest('[data-atidaryti]');
+    if (atidaryti) document.getElementById(atidaryti.dataset.atidaryti)?.showModal();
+
+    const uzdaryti = e.target.closest('[data-uzdaryti]');
+    if (uzdaryti) uzdaryti.closest('dialog')?.close();
+});
+// Uždaryti paspaudus šalia lango
+document.querySelectorAll('dialog').forEach(d => {
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+});
+// Jei išsaugant buvo klaidų – popup atidarom iš naujo su klaidomis
+document.querySelector('dialog[data-atidaryti-iskart]')?.showModal();
+</script>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

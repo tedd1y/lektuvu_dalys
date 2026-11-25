@@ -5,16 +5,25 @@ require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Vadybininkas');
 
-// Visi tiekėjai su jų prekių skaičiumi
-$tiekejai = $pdo->query(
-    "SELECT n.naudotojo_id, n.vardas, n.pavarde, n.pavadinimas, n.pastas, n.telefonas,
-            COUNT(p.prekes_id) AS prekiu_sk
-     FROM naudotojas n
-     LEFT JOIN preke p ON p.tiekejo_id = n.naudotojo_id
-     WHERE n.tipas = 'Tiekejas'
-     GROUP BY n.naudotojo_id
-     ORDER BY COALESCE(n.pavadinimas, n.pavarde)"
-)->fetchAll();
+$q = trim($_GET['q'] ?? '');
+
+// Tiekėjai su jų prekių skaičiumi (jei įvesta – filtruojam pagal pavadinimą)
+$sql = "SELECT n.naudotojo_id, n.vardas, n.pavarde, n.pavadinimas, n.pastas, n.telefonas,
+               COUNT(p.prekes_id) AS prekiu_sk
+        FROM naudotojas n
+        LEFT JOIN preke p ON p.tiekejo_id = n.naudotojo_id
+        WHERE n.tipas = 'Tiekejas'";
+$params = [];
+if ($q !== '') {
+    // Įmonės pavadinimas, o jei jo nėra – vardas ir pavardė
+    $sql .= " AND (n.pavadinimas LIKE ? OR CONCAT(n.vardas, ' ', n.pavarde) LIKE ?)";
+    $like = '%' . addcslashes($q, '%_\\') . '%';
+    $params = [$like, $like];
+}
+$sql .= ' GROUP BY n.naudotojo_id ORDER BY COALESCE(n.pavadinimas, n.pavarde)';
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$tiekejai = $stmt->fetchAll();
 
 // «extend» Peržiūrėti tiekėjo siūlomas dalis – visų tiekėjų dalys viena užklausa,
 // kad popup atsidarytų iškart, be puslapio perkrovimo
@@ -43,12 +52,23 @@ require __DIR__ . '/../includes/header.php';
 
 <h1 class="text-2xl font-semibold mb-6">Tiekėjai</h1>
 
+<form method="get" class="mb-6 flex gap-2 max-w-xl">
+    <input type="search" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Ieškoti tiekėjo pagal pavadinimą…"
+           class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500">
+    <button class="rounded-lg bg-sky-600 px-5 py-2 text-sm font-medium text-white hover:bg-sky-700">Ieškoti</button>
+    <?php if ($q !== ''): ?>
+        <a href="tiekejai.php" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-200">Rodyti visus</a>
+    <?php endif; ?>
+</form>
+
 <?php if ($nerastas): ?>
     <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">Toks tiekėjas nerastas.</div>
 <?php endif; ?>
 
 <?php if (!$tiekejai): ?>
-    <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">Tiekėjų kol kas nėra.</div>
+    <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">
+        <?= $q !== '' ? 'Pagal „' . htmlspecialchars($q) . '“ tiekėjų nerasta.' : 'Tiekėjų kol kas nėra.' ?>
+    </div>
 <?php else: ?>
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
         <table class="w-full text-sm">
@@ -79,8 +99,8 @@ require __DIR__ . '/../includes/header.php';
                         <td class="px-5 py-3 text-right">
                             <button type="button" data-atidaryti="tiekejas-<?= $id ?>"
                                     title="Peržiūrėti siūlomas dalis" aria-label="Peržiūrėti <?= htmlspecialchars(tiekejoPavadinimas($t)) ?> siūlomas dalis"
-                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-sky-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0-3-3m3 3 3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
                                 </svg>
                             </button>
