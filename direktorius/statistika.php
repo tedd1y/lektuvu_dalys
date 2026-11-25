@@ -1,8 +1,9 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Direktorius');
+tikrintiRole('Direktorius');
 
 // Kiek kokių detalių užsakyta, už kokią sumą ir kada bus pristatytos.
 // Atšaukti užsakymai neįskaičiuojami.
@@ -26,10 +27,6 @@ $dalys = $pdo->query(
 
 $visoKiekis = array_sum(array_column($dalys, 'kiekis'));
 $visoSuma   = array_sum(array_column($dalys, 'suma'));
-
-function eur($s): string {
-    return number_format((float)$s, 2, ',', ' ') . ' €';
-}
 
 $puslapioPavadinimas = 'Statistika';
 require __DIR__ . '/../includes/header.php';

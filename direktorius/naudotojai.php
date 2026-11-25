@@ -1,8 +1,9 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Direktorius');
+tikrintiRole('Direktorius');
 
 $manoId = (int)$_SESSION['naudotojo_id'];
 
@@ -22,13 +23,6 @@ $rolesPav = fn(?string $r) => $roliuPav[$r] ?? ($r ?? '—');
 
 $q       = trim($_GET['q'] ?? '');
 $filtras = in_array($_GET['role'] ?? '', $roles, true) ? $_GET['role'] : '';
-
-function grizti(string $tipas, string $tekstas): never {
-    $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
-    $uzklausa = $_SERVER['QUERY_STRING'] ?? '';
-    header('Location: naudotojai.php' . ($uzklausa ? "?$uzklausa" : ''));
-    exit;
-}
 
 // --- «extend» Pakeisti naudotojo teisę ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

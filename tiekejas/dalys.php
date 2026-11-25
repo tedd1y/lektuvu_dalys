@@ -3,17 +3,10 @@ require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Tiekejas');
+tikrintiRole('Tiekejas');
 
 $manoId = (int)$_SESSION['naudotojo_id'];
 $q      = trim($_GET['q'] ?? '');
-
-function atgal(string $tipas, string $tekstas, int $dalisId = 0): never {
-    global $q;
-    $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
-    header('Location: dalys.php' . ($q !== '' ? '?q=' . urlencode($q) : '') . ($dalisId ? "#d$dalisId" : ''));
-    exit;
-}
 
 // Grąžina mano dalį arba null (svetimų dalių nei redaguoti, nei trinti negalima)
 function manoDalis(PDO $pdo, int $id, int $manoId): ?array {
@@ -31,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id    = (int)($_POST['prekes_id'] ?? 0);
     $dalis = manoDalis($pdo, $id, $manoId);
     if (!$dalis) {
-        atgal('klaida', 'Dalis nerasta.');
+        grizti('klaida', 'Dalis nerasta.');
     }
 
     if (($_POST['veiksmas'] ?? '') === 'istrinti') {
@@ -41,12 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uzsakymu = (int)$stmt->fetchColumn();
 
         if ($uzsakymu > 0) {
-            atgal('klaida', "„{$dalis['pavadinimas']}“ ištrinti negalima, nes ji yra $uzsakymu užsakyme(-uose). "
-                . 'Jei nebenorite jos siūlyti, nustatykite kiekį 0.', $id);
+            grizti('klaida', "„{$dalis['pavadinimas']}“ ištrinti negalima, nes ji yra $uzsakymu užsakyme(-uose). "
+                . 'Jei nebenorite jos siūlyti, nustatykite kiekį 0.', "d$id");
         }
 
         $pdo->prepare('DELETE FROM preke WHERE prekes_id = ? AND tiekejo_id = ?')->execute([$id, $manoId]);
-        atgal('sekme', "„{$dalis['pavadinimas']}“ ištrinta.");
+        grizti('sekme', "„{$dalis['pavadinimas']}“ ištrinta.");
     }
 
     if (($_POST['veiksmas'] ?? '') === 'redaguoti') {
@@ -67,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id,
                 $manoId,
             ]);
-            atgal('sekme', "„{$laukai['pavadinimas']}“ atnaujinta.", $id);
+            grizti('sekme', "„{$laukai['pavadinimas']}“ atnaujinta.", "d$id");
         }
 
         // Klaidos – rodom tą pačią eilutę redagavimo režimu su įvestomis reikšmėmis
@@ -90,10 +83,6 @@ $sql .= ' GROUP BY p.prekes_id ORDER BY p.pavadinimas';
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $dalys = $stmt->fetchAll();
-
-function eur($k): string {
-    return number_format((float)$k, 2, ',', ' ') . ' €';
-}
 
 // Formos reikšmės iš DB eilutės
 function reiksmes(array $d): array {

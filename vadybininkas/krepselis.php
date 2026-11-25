@@ -3,20 +3,14 @@ require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Vadybininkas');
-
-function klaida(string $tekstas): never {
-    $_SESSION['zinute'] = ['tipas' => 'klaida', 'tekstas' => $tekstas];
-    header('Location: krepselis.php');
-    exit;
-}
+tikrintiRole('Vadybininkas');
 
 // --- Užsakymo pateikimas ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Iš naršyklės ateina tik [{id, kiekis}, ...] – kainos ir likučiai imami iš DB
     $duomenys = json_decode($_POST['krepselis'] ?? '', true);
     if (!is_array($duomenys) || !$duomenys) {
-        klaida('Krepšelis tuščias.');
+        grizti('klaida', 'Krepšelis tuščias.');
     }
 
     $kiekiai = [];
@@ -24,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($eil['id'] ?? 0);
         $k  = (int)($eil['kiekis'] ?? 0);
         if ($id <= 0 || $k <= 0) {
-            klaida('Neteisingi krepšelio duomenys.');
+            grizti('klaida', 'Neteisingi krepšelio duomenys.');
         }
         $kiekiai[$id] = ($kiekiai[$id] ?? 0) + $k;
     }
@@ -77,16 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
     } catch (RuntimeException $e) {
         $pdo->rollBack();
-        klaida($e->getMessage());
+        grizti('klaida', $e->getMessage());
     }
 
     $nr = implode(', ', $sukurti);
-    $_SESSION['zinute'] = ['tipas' => 'sekme', 'tekstas' => count($sukurti) === 1
-        ? "Užsakymas Nr. $nr pateiktas sėkmingai."
-        : 'Pateikti ' . count($sukurti) . " užsakymai (po vieną kiekvienam tiekėjui): Nr. $nr."];
     $_SESSION['isvalyti_krepseli'] = true;
-    header('Location: krepselis.php');
-    exit;
+    grizti('sekme', count($sukurti) === 1
+        ? "Užsakymas Nr. $nr pateiktas sėkmingai."
+        : 'Pateikti ' . count($sukurti) . " užsakymai (po vieną kiekvienam tiekėjui): Nr. $nr.");
 }
 
 $isvalyti = !empty($_SESSION['isvalyti_krepseli']);

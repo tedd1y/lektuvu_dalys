@@ -3,7 +3,7 @@ require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Tiekejas');
+tikrintiRole('Tiekejas');
 
 $manoId = (int)$_SESSION['naudotojo_id'];
 
@@ -12,13 +12,6 @@ const PEREJIMAI = [
     'Pateiktas' => ['Priimtas' => 'Priimti', 'Atsauktas' => 'Atmesti'],
     'Priimtas'  => ['Ivykdytas' => 'Pažymėti įvykdytu'],
 ];
-
-function grizti(string $tipas, string $tekstas, int $atidaryti = 0): never {
-    $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
-    $uzklausa = $_SERVER['QUERY_STRING'] ?? '';
-    header('Location: gauti_uzsakymai.php' . ($uzklausa ? "?$uzklausa" : '') . ($atidaryti ? "#u$atidaryti" : ''));
-    exit;
-}
 
 // --- «extend» Pakeisti užsakymo būseną ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -61,10 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
 
         $tekstai = ['Priimtas' => 'priimtas', 'Atsauktas' => 'atmestas', 'Ivykdytas' => 'pažymėtas įvykdytu'];
-        grizti('sekme', "Užsakymas Nr. $uzsakymoId {$tekstai[$nauja]}.", $uzsakymoId);
+        grizti('sekme', "Užsakymas Nr. $uzsakymoId {$tekstai[$nauja]}.", "u$uzsakymoId");
     } catch (RuntimeException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        grizti('klaida', $e->getMessage(), $uzsakymoId);
+        grizti('klaida', $e->getMessage(), "u$uzsakymoId");
     }
 }
 
@@ -118,10 +111,6 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$manoId]);
 $kiekPagalBusena = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-function eur($s): string {
-    return number_format((float)$s, 2, ',', ' ') . ' €';
-}
 
 $puslapioPavadinimas = 'Gauti užsakymai';
 require __DIR__ . '/../includes/header.php';

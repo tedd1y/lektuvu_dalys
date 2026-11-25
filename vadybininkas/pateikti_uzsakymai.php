@@ -3,16 +3,9 @@ require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Vadybininkas');
+tikrintiRole('Vadybininkas');
 
 $manoId = (int)$_SESSION['naudotojo_id'];
-
-function grizti(string $tipas, string $tekstas, int $atidaryti = 0): never {
-    $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
-    $uzklausa = $_SERVER['QUERY_STRING'] ?? '';
-    header('Location: pateikti_uzsakymai.php' . ($uzklausa ? "?$uzklausa" : '') . ($atidaryti ? "#u$atidaryti" : ''));
-    exit;
-}
 
 // --- Veiksmai (redaguoti / atšaukti) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -38,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             grazintiLikuti($pdo, $uzsakymoId);
             $pdo->prepare("UPDATE uzsakymas SET busena = 'Atsauktas' WHERE uzsakymo_id = ?")->execute([$uzsakymoId]);
             $pdo->commit();
-            grizti('sekme', "Užsakymas Nr. $uzsakymoId atšauktas.", $uzsakymoId);
+            grizti('sekme', "Užsakymas Nr. $uzsakymoId atšauktas.", "u$uzsakymoId");
         }
 
         if ($veiksmas === 'redaguoti') {
@@ -88,13 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ->execute([$uzsakymoId, $uzsakymoId]);
 
             $pdo->commit();
-            grizti('sekme', "Užsakymas Nr. $uzsakymoId atnaujintas.", $uzsakymoId);
+            grizti('sekme', "Užsakymas Nr. $uzsakymoId atnaujintas.", "u$uzsakymoId");
         }
 
         throw new RuntimeException('Nežinomas veiksmas.');
     } catch (RuntimeException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        grizti('klaida', $e->getMessage(), $uzsakymoId);
+        grizti('klaida', $e->getMessage(), "u$uzsakymoId");
     }
 }
 
@@ -143,10 +136,6 @@ if ($uzsakymai) {
 $stmt = $pdo->prepare('SELECT busena, COUNT(*) FROM uzsakymas WHERE vadybininko_id = ? GROUP BY busena');
 $stmt->execute([$manoId]);
 $kiekPagalBusena = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-function eur($s): string {
-    return number_format((float)$s, 2, ',', ' ') . ' €';
-}
 
 $puslapioPavadinimas = 'Mano užsakymai';
 require __DIR__ . '/../includes/header.php';

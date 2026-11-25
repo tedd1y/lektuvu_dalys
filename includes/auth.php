@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-function checkRole(string ...$roles): void {
+function tikrintiRole(string ...$roles): void {
     global $pdo;
 
     if (!isset($_SESSION['naudotojo_id'])) {

@@ -2,7 +2,7 @@
 require __DIR__ . '/config/db.php';
 require __DIR__ . '/includes/auth.php';
 
-checkRole(); // bet kuris prisijungęs naudotojas
+tikrintiRole(); // bet kuris prisijungęs naudotojas
 
 $korteles = [
     'Vadybininkas' => [

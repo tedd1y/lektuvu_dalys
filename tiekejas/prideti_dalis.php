@@ -3,7 +3,7 @@ require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
 require __DIR__ . '/../includes/funkcijos.php';
 
-checkRole('Tiekejas');
+tikrintiRole('Tiekejas');
 
 $laukai  = DALIES_LAUKAI;
 $klaidos = [];

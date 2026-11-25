@@ -133,3 +133,21 @@ function poDarboDienu(int $dienos, ?DateTimeImmutable $nuo = null): DateTimeImmu
     }
     return $data;
 }
+
+// Suma eurais: 1234.5 → „1 234,50 €“
+function eur($suma): string
+{
+    return number_format((float)$suma, 2, ',', ' ') . ' €';
+}
+
+// POST → redirect: išsaugo žinutę ir grąžina į tą patį puslapį su ta pačia užklausa (filtrai, paieška).
+// $inkaras – elemento id (pvz. „u12“), kurį atidaryti po perkrovimo.
+function grizti(string $tipas, string $tekstas, string $inkaras = ''): never
+{
+    $_SESSION['zinute'] = ['tipas' => $tipas, 'tekstas' => $tekstas];
+    $uzklausa = $_SERVER['QUERY_STRING'] ?? '';
+    header('Location: ' . basename($_SERVER['SCRIPT_NAME'])
+        . ($uzklausa !== '' ? "?$uzklausa" : '')
+        . ($inkaras !== '' ? "#$inkaras" : ''));
+    exit;
+}
