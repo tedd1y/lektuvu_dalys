@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Vadybininkas');
 
@@ -148,6 +149,7 @@ require __DIR__ . '/../includes/header.php';
                         <th class="px-5 py-3 font-medium">Modelis</th>
                         <th class="px-5 py-3 font-medium text-right">Kaina</th>
                         <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
+                        <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -166,6 +168,7 @@ require __DIR__ . '/../includes/header.php';
                                 <?= kaina($d['kaina']) ?>
                             </td>
                             <td class="px-5 py-3 text-right whitespace-nowrap"><?= kiekis($d['kiekis']) ?></td>
+                            <td class="px-5 py-3 text-right"><?= krepselioMygtukas($d, $d['tiekejas'], true) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -191,21 +194,25 @@ require __DIR__ . '/../includes/header.php';
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <?php foreach ($dalys as $d): ?>
             <?php $aktyvi = $pasirinkta && (int)$d['prekes_id'] === (int)$pasirinkta['prekes_id']; ?>
-            <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>"
-               class="block rounded-xl bg-white p-5 shadow-sm border transition <?= $aktyvi ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200 hover:border-sky-400 hover:shadow' ?>">
-                <div class="flex items-start justify-between gap-3">
-                    <h3 class="font-semibold text-slate-800"><?= htmlspecialchars($d['pavadinimas']) ?></h3>
-                    <span class="shrink-0 font-semibold text-sky-700"><?= kaina($d['kaina']) ?></span>
+            <div class="flex flex-col rounded-xl bg-white shadow-sm border transition <?= $aktyvi ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200 hover:border-sky-400 hover:shadow' ?>">
+                <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>" class="block flex-1 p-5 pb-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="font-semibold text-slate-800"><?= htmlspecialchars($d['pavadinimas']) ?></h3>
+                        <span class="shrink-0 font-semibold text-sky-700"><?= kaina($d['kaina']) ?></span>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-500">
+                        <?= htmlspecialchars($d['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($d['modelis'] ?? '—') ?>
+                    </p>
+                    <div class="mt-3 flex items-center justify-between text-sm">
+                        <span class="text-slate-600"><?= htmlspecialchars($d['tiekejas']) ?></span>
+                        <span><?= kiekis($d['kiekis']) ?></span>
+                    </div>
+                    <p class="mt-3 text-xs text-sky-600">Palyginti su kitais tiekėjais →</p>
+                </a>
+                <div class="px-5 pb-5">
+                    <?= krepselioMygtukas($d, $d['tiekejas']) ?>
                 </div>
-                <p class="mt-1 text-sm text-slate-500">
-                    <?= htmlspecialchars($d['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($d['modelis'] ?? '—') ?>
-                </p>
-                <div class="mt-3 flex items-center justify-between text-sm">
-                    <span class="text-slate-600"><?= htmlspecialchars($d['tiekejas']) ?></span>
-                    <span><?= kiekis($d['kiekis']) ?></span>
-                </div>
-                <p class="mt-3 text-xs text-sky-600">Palyginti su kitais tiekėjais →</p>
-            </a>
+            </div>
         <?php endforeach; ?>
     </div>
 <?php endif; ?>

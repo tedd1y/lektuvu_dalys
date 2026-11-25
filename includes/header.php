@@ -43,8 +43,12 @@ unset($_SESSION['zinute']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($puslapioPavadinimas ?? 'Pradžia') ?> – Lėktuvo dalių užsakymų sistema</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <?php if ($tipas === 'Vadybininkas'): ?>
+        <script src="<?= $base ?>/includes/krepselis.js" defer></script>
+    <?php endif; ?>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800">
+<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800"
+      data-naudotojas="<?= (int)($_SESSION['naudotojo_id'] ?? 0) ?>">
 
 <header class="bg-white border-b border-slate-200">
     <div class="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4 py-3">
@@ -64,6 +68,17 @@ unset($_SESSION['zinute']);
 
         <?php if (isset($_SESSION['naudotojo_id'])): ?>
             <div class="flex items-center gap-4 text-sm">
+                <?php if ($tipas === 'Vadybininkas'): ?>
+                    <?php $krepselyje = $dabartinis === $base . '/vadybininkas/krepselis.php'; ?>
+                    <a href="<?= $base ?>/vadybininkas/krepselis.php" title="Krepšelis"
+                       class="relative rounded-lg p-2 <?= $krepselyje ? 'bg-sky-100 text-sky-800' : 'text-slate-600 hover:bg-slate-100' ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>
+                        </svg>
+                        <span data-krepselio-kiekis
+                              class="hidden absolute -top-1 -right-1 min-w-[1.25rem] h-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold leading-5 text-white">0</span>
+                    </a>
+                <?php endif; ?>
                 <span class="text-slate-600">
                     <?= htmlspecialchars($_SESSION['vardas'] . ' ' . $_SESSION['pavarde']) ?>
                     <span class="ml-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../config/db.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/funkcijos.php';
 
 checkRole('Vadybininkas');
 
@@ -111,6 +112,7 @@ require __DIR__ . '/../includes/header.php';
                                     <th class="px-5 py-3 font-medium">Modelis</th>
                                     <th class="px-5 py-3 font-medium text-right">Kaina</th>
                                     <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
+                                    <th class="px-5 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -126,6 +128,9 @@ require __DIR__ . '/../includes/header.php';
                                             <?php else: ?>
                                                 <span class="text-red-600">Nėra</span>
                                             <?php endif; ?>
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <?= krepselioMygtukas($p, tiekejoPavadinimas($pasirinktas), true) ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
