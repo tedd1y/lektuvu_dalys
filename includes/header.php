@@ -8,7 +8,7 @@ $base = '/lektuvu_dalys';
 $meniu = [
     'Vadybininkas' => [
         'Tiekėjai'        => '/vadybininkas/tiekejai.php',
-        'Dalių paieška'   => '/vadybininkas/paieska.php',
+        'Dalių paieška'   => '/vadybininkas/daliu_paieska.php',
         'Mano užsakymai'  => '/vadybininkas/uzsakymai.php',
     ],
     'Tiekejas' => [

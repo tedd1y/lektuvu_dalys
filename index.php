@@ -7,7 +7,7 @@ checkRole(); // bet kuris prisijungęs naudotojas
 $korteles = [
     'Vadybininkas' => [
         ['Tiekėjai', 'Peržiūrėkite tiekėjų sąrašą ir jų siūlomas dalis.', 'vadybininkas/tiekejai.php'],
-        ['Dalių paieška', 'Ieškokite dalių pagal pavadinimą ir palyginkite pasiūlymus.', 'vadybininkas/paieska.php'],
+        ['Dalių paieška', 'Ieškokite dalių pagal pavadinimą ir palyginkite pasiūlymus.', 'vadybininkas/daliu_paieska.php'],
         ['Mano užsakymai', 'Peržiūrėkite, redaguokite ar atšaukite pateiktus užsakymus.', 'vadybininkas/uzsakymai.php'],
     ],
     'Tiekejas' => [

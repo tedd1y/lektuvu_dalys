@@ -1,0 +1,213 @@
+<?php
+require __DIR__ . '/../config/db.php';
+require __DIR__ . '/../includes/auth.php';
+
+checkRole('Vadybininkas');
+
+$q       = trim($_GET['q'] ?? '');
+$dalisId = (int)($_GET['dalis'] ?? 0);
+
+$rikiavimai = [
+    'kaina'       => 'p.kaina ASC',
+    'pavadinimas' => 'p.pavadinimas ASC',
+    'gamintojas'  => 'p.gamintojas ASC, p.kaina ASC',
+    'modelis'     => 'p.modelis ASC, p.kaina ASC',
+];
+$rik = array_key_exists($_GET['rik'] ?? '', $rikiavimai) ? $_GET['rik'] : 'kaina';
+
+$laukai = 'p.prekes_id, p.pavadinimas, p.gamintojas, p.modelis, p.kaina, p.kiekis, p.tiekejo_id,
+           COALESCE(n.pavadinimas, CONCAT(n.vardas, " ", n.pavarde)) AS tiekejas';
+
+function likeReiksme(string $s): string {
+    return '%' . addcslashes($s, '%_\\') . '%';
+}
+
+// --- Paieška arba atsitiktinės dalys ---
+if ($q !== '') {
+    $stmt = $pdo->prepare(
+        "SELECT $laukai
+         FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
+         WHERE p.pavadinimas LIKE :q1 OR p.gamintojas LIKE :q2 OR p.modelis LIKE :q3
+         ORDER BY {$rikiavimai[$rik]}"
+    );
+    $like = likeReiksme($q);
+    $stmt->execute(['q1' => $like, 'q2' => $like, 'q3' => $like]);
+    $dalys = $stmt->fetchAll();
+} else {
+    $dalys = $pdo->query(
+        "SELECT $laukai
+         FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
+         ORDER BY RAND() LIMIT 12"
+    )->fetchAll();
+}
+
+// --- «extend» Palyginti panašias dalis ---
+$pasirinkta = null;
+$panasios   = [];
+
+if ($dalisId) {
+    $stmt = $pdo->prepare("SELECT $laukai FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id WHERE p.prekes_id = ?");
+    $stmt->execute([$dalisId]);
+    $pasirinkta = $stmt->fetch() ?: null;
+}
+
+if ($pasirinkta) {
+    // Pavadinimo žodžiai (bent 3 raidės) – kiekvienas sutapęs žodis didina panašumą
+    $zodziai = array_unique(array_filter(
+        preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($pasirinkta['pavadinimas'])),
+        fn($z) => mb_strlen($z) >= 3
+    ));
+
+    $balas  = [];
+    $params = [];
+    foreach (array_values($zodziai) as $i => $z) {
+        $balas[]        = "(p.pavadinimas LIKE :z$i)";
+        $params["z$i"] = likeReiksme($z);
+    }
+    // Tas pats modelis ar gamintojas – stiprus panašumo požymis
+    // (COALESCE, nes palyginimas su NULL grąžintų NULL ir „sugadintų“ visą sumą)
+    $balas[] = 'COALESCE(p.modelis = :modelis, 0) * 3';
+    $balas[] = 'COALESCE(p.gamintojas = :gamintojas, 0)';
+    $params['modelis']    = $pasirinkta['modelis'];
+    $params['gamintojas'] = $pasirinkta['gamintojas'];
+    $params['tiekejas']   = $pasirinkta['tiekejo_id'];
+
+    $balasSql = implode(' + ', $balas);
+    $stmt = $pdo->prepare(
+        "SELECT * FROM (
+             SELECT $laukai, ($balasSql) AS panasumas
+             FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
+             WHERE p.tiekejo_id <> :tiekejas
+         ) x
+         WHERE panasumas > 0
+         ORDER BY " . str_replace('p.', 'x.', $rikiavimai[$rik]) . "
+         LIMIT 20"
+    );
+    $stmt->execute($params);
+    $panasios = $stmt->fetchAll();
+}
+
+// Pagalbinės funkcijos
+function nuoroda(array $keisti): string {
+    $p = array_merge(['q' => $_GET['q'] ?? null, 'rik' => $_GET['rik'] ?? null, 'dalis' => $_GET['dalis'] ?? null], $keisti);
+    return '?' . http_build_query(array_filter($p, fn($v) => $v !== null && $v !== ''));
+}
+function kaina($k): string {
+    return number_format((float)$k, 2, ',', ' ') . ' €';
+}
+function kiekis($k): string {
+    return (int)$k > 0 ? (int)$k . ' vnt.' : '<span class="text-red-600">Nėra</span>';
+}
+
+$puslapioPavadinimas = 'Dalių paieška';
+require __DIR__ . '/../includes/header.php';
+?>
+
+<h1 class="text-2xl font-semibold mb-6">Dalių paieška</h1>
+
+<!-- Paieškos juosta -->
+<form method="get" class="mb-8 flex flex-col sm:flex-row gap-3">
+    <input type="search" name="q" value="<?= htmlspecialchars($q) ?>" autofocus
+           placeholder="Įveskite dalies pavadinimą, gamintoją ar modelį…"
+           class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+    <select name="rik" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5">
+        <option value="kaina" <?= $rik === 'kaina' ? 'selected' : '' ?>>Pigiausios pirma</option>
+        <option value="pavadinimas" <?= $rik === 'pavadinimas' ? 'selected' : '' ?>>Pagal pavadinimą</option>
+        <option value="gamintojas" <?= $rik === 'gamintojas' ? 'selected' : '' ?>>Pagal gamintoją</option>
+        <option value="modelis" <?= $rik === 'modelis' ? 'selected' : '' ?>>Pagal modelį</option>
+    </select>
+    <button class="rounded-lg bg-sky-600 px-6 py-2.5 font-medium text-white hover:bg-sky-700">Ieškoti</button>
+</form>
+
+<?php if ($dalisId && !$pasirinkta): ?>
+    <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">Tokia dalis nerasta.</div>
+<?php endif; ?>
+
+<!-- Palyginimas -->
+<?php if ($pasirinkta): ?>
+    <section class="mb-10 bg-white rounded-xl shadow-sm border border-sky-200">
+        <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200">
+            <div>
+                <h2 class="text-lg font-semibold">Palyginimas: <?= htmlspecialchars($pasirinkta['pavadinimas']) ?></h2>
+                <p class="text-sm text-slate-500">Pasirinkta dalis ir panašios kitų tiekėjų dalys</p>
+            </div>
+            <a href="<?= htmlspecialchars(nuoroda(['dalis' => null])) ?>" class="text-sm text-slate-500 hover:text-slate-800">✕ Uždaryti</a>
+        </div>
+
+        <?php
+        $visos   = array_merge([$pasirinkta], $panasios);
+        $pigiausia = min(array_column($visos, 'kaina'));
+        ?>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-left text-slate-600">
+                    <tr>
+                        <th class="px-5 py-3 font-medium">Pavadinimas</th>
+                        <th class="px-5 py-3 font-medium">Tiekėjas</th>
+                        <th class="px-5 py-3 font-medium">Gamintojas</th>
+                        <th class="px-5 py-3 font-medium">Modelis</th>
+                        <th class="px-5 py-3 font-medium text-right">Kaina</th>
+                        <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <?php foreach ($visos as $i => $d): ?>
+                        <tr class="<?= $i === 0 ? 'bg-sky-50' : 'hover:bg-slate-50' ?>">
+                            <td class="px-5 py-3 font-medium">
+                                <?= htmlspecialchars($d['pavadinimas']) ?>
+                                <?php if ($i === 0): ?><span class="ml-1 rounded bg-sky-600 px-1.5 py-0.5 text-xs text-white">pasirinkta</span><?php endif; ?>
+                            </td>
+                            <td class="px-5 py-3">
+                                <a href="tiekejai.php?id=<?= (int)$d['tiekejo_id'] ?>" class="text-sky-700 hover:underline"><?= htmlspecialchars($d['tiekejas']) ?></a>
+                            </td>
+                            <td class="px-5 py-3"><?= htmlspecialchars($d['gamintojas'] ?? '—') ?></td>
+                            <td class="px-5 py-3"><?= htmlspecialchars($d['modelis'] ?? '—') ?></td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap <?= (float)$d['kaina'] == (float)$pigiausia && count($visos) > 1 ? 'text-green-700 font-semibold' : '' ?>">
+                                <?= kaina($d['kaina']) ?>
+                            </td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap"><?= kiekis($d['kiekis']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php if (!$panasios): ?>
+            <p class="px-5 py-4 text-sm text-slate-500 border-t border-slate-100">Kiti tiekėjai panašių dalių nesiūlo.</p>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
+
+<!-- Rezultatai -->
+<h2 class="text-sm font-medium uppercase tracking-wide text-slate-500 mb-3">
+    <?= $q !== '' ? 'Rasta dalių: ' . count($dalys) : 'Atsitiktinės dalys' ?>
+</h2>
+
+<?php if (!$dalys): ?>
+    <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">
+        <?= $q !== '' ? 'Pagal „' . htmlspecialchars($q) . '“ nieko nerasta.' : 'Dalių sistemoje kol kas nėra.' ?>
+    </div>
+<?php else: ?>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <?php foreach ($dalys as $d): ?>
+            <?php $aktyvi = $pasirinkta && (int)$d['prekes_id'] === (int)$pasirinkta['prekes_id']; ?>
+            <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>"
+               class="block rounded-xl bg-white p-5 shadow-sm border transition <?= $aktyvi ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200 hover:border-sky-400 hover:shadow' ?>">
+                <div class="flex items-start justify-between gap-3">
+                    <h3 class="font-semibold text-slate-800"><?= htmlspecialchars($d['pavadinimas']) ?></h3>
+                    <span class="shrink-0 font-semibold text-sky-700"><?= kaina($d['kaina']) ?></span>
+                </div>
+                <p class="mt-1 text-sm text-slate-500">
+                    <?= htmlspecialchars($d['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($d['modelis'] ?? '—') ?>
+                </p>
+                <div class="mt-3 flex items-center justify-between text-sm">
+                    <span class="text-slate-600"><?= htmlspecialchars($d['tiekejas']) ?></span>
+                    <span><?= kiekis($d['kiekis']) ?></span>
+                </div>
+                <p class="mt-3 text-xs text-sky-600">Palyginti su kitais tiekėjais →</p>
+            </a>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+
+<?php require __DIR__ . '/../includes/footer.php'; ?>
