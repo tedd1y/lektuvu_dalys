@@ -11,6 +11,10 @@ if (isset($_SESSION['naudotojo_id'])) {
 $klaida = '';
 $pastas = '';
 
+// žinutė po registracijos
+$zinute = $_SESSION['zinute']['tekstas'] ?? '';
+unset($_SESSION['zinute']);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pastas      = trim($_POST['pastas'] ?? '');
     $slaptazodis = $_POST['slaptazodis'] ?? '';
@@ -55,6 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="text-center text-slate-500 mb-6">Prisijunkite prie sistemos</p>
 
     <div class="bg-white rounded-xl shadow p-6">
+        <?php if ($zinute !== ''): ?>
+            <div class="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                <?= htmlspecialchars($zinute) ?>
+            </div>
+        <?php endif; ?>
+
         <?php if ($klaida !== ''): ?>
             <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                 <?= htmlspecialchars($klaida) ?>
