@@ -1,13 +1,17 @@
 <?php
 
-// Mygtukas „Į krepšelį“ – duomenis paima includes/krepselis.js
-function krepselioMygtukas(array $preke, string $tiekejas, bool $mazas = false): string
+// Mygtukas „Į krepšelį“ (ikona, fiksuoto dydžio) – duomenis paima includes/krepselis.js
+const KREPSELIO_IKONA = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>';
+
+function krepselioMygtukas(array $preke, string $tiekejas): string
 {
     $kiekis = (int)$preke['kiekis'];
-    $dydis  = $mazas ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm w-full';
+    $klases = 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-600 text-white hover:bg-sky-700 '
+            . 'focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 '
+            . 'disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed';
 
     if ($kiekis <= 0) {
-        return '<button type="button" disabled class="rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed ' . $dydis . '">Nėra sandėlyje</button>';
+        return '<button type="button" disabled aria-label="Nėra sandėlyje" class="' . $klases . '">' . KREPSELIO_IKONA . '</button>';
     }
 
     $attr = [
@@ -18,14 +22,14 @@ function krepselioMygtukas(array $preke, string $tiekejas, bool $mazas = false):
         'data-modelis'    => $preke['modelis'] ?? '',
         'data-kaina'      => $preke['kaina'],
         'data-sandelyje'  => $kiekis,
+        'aria-label'      => 'Įdėti „' . $preke['pavadinimas'] . '“ į krepšelį',
     ];
     $html = '';
     foreach ($attr as $k => $v) {
         $html .= ' ' . $k . '="' . htmlspecialchars((string)$v) . '"';
     }
 
-    return '<button type="button" data-i-krepseli' . $html
-         . ' class="rounded-lg bg-sky-600 font-medium text-white hover:bg-sky-700 whitespace-nowrap ' . $dydis . '">+ Į krepšelį</button>';
+    return '<button type="button" data-i-krepseli' . $html . ' class="' . $klases . '">' . KREPSELIO_IKONA . '</button>';
 }
 
 // Dalies formos laukai (pagal `preke` lentelę)

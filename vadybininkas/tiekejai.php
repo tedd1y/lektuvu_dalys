@@ -136,7 +136,7 @@ require __DIR__ . '/../includes/header.php';
                                     </td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap"><?= number_format((float)$p['kaina'], 2, ',', ' ') ?> €</td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap"><?= likutis($p) ?></td>
-                                    <td class="px-6 py-3 text-right"><?= krepselioMygtukas($p, tiekejoPavadinimas($t), true) ?></td>
+                                    <td class="px-6 py-3 text-right"><?= krepselioMygtukas($p, tiekejoPavadinimas($t)) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

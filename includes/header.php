@@ -45,7 +45,7 @@ unset($_SESSION['zinute']);
     <title><?= htmlspecialchars($puslapioPavadinimas ?? 'Pradžia') ?> – Lėktuvo dalių užsakymų sistema</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <?php if ($tipas === 'Vadybininkas'): ?>
-        <script src="<?= $base ?>/includes/krepselis.js" defer></script>
+        <script src="<?= $base ?>/includes/krepselis.js?v=<?= filemtime(__DIR__ . '/krepselis.js') ?>" defer></script>
     <?php endif; ?>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col text-slate-800"

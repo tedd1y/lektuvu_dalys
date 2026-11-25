@@ -152,10 +152,7 @@ $puslapioPavadinimas = 'Mano užsakymai';
 require __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-    <h1 class="text-2xl font-semibold">Mano užsakymai</h1>
-    <a href="daliu_paieska.php" class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">+ Naujas užsakymas</a>
-</div>
+<h1 class="text-2xl font-semibold mb-6">Mano užsakymai</h1>
 
 <!-- Filtras pagal būseną -->
 <nav class="mb-6 flex flex-wrap gap-2 text-sm">
@@ -177,102 +174,156 @@ require __DIR__ . '/../includes/header.php';
         <?= $filtras ? 'Užsakymų su šia būsena nėra.' : 'Jūs dar nepateikėte nė vieno užsakymo.' ?>
     </div>
 <?php else: ?>
-    <div class="space-y-3">
-        <?php foreach ($uzsakymai as $u): ?>
-            <?php
-            $id       = (int)$u['uzsakymo_id'];
-            $mano     = $eilutes[$id] ?? [];
-            $galimaKeisti = $u['busena'] === 'Pateiktas';
-            [$busTekstas, $busKlase] = $busenos[$u['busena']];
-            ?>
-            <details id="u<?= $id ?>" class="group bg-white rounded-xl shadow-sm border border-slate-200 open:border-sky-300">
-                <summary class="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 cursor-pointer list-none select-none">
-                    <span class="font-semibold w-24">Nr. <?= $id ?></span>
-                    <span class="text-sm text-slate-500 w-36"><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></span>
-                    <span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span>
-                    <span class="text-sm text-slate-500"><?= count($mano) ?> poz.</span>
-                    <span class="ml-auto font-semibold"><?= eur($u['suma']) ?></span>
-                    <span class="text-slate-400 transition group-open:rotate-180">▾</span>
-                </summary>
-
-                <div class="border-t border-slate-200">
-                    <form method="post">
-                        <input type="hidden" name="uzsakymo_id" value="<?= $id ?>">
-                        <input type="hidden" name="veiksmas" value="redaguoti">
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead class="bg-slate-50 text-left text-slate-600">
-                                    <tr>
-                                        <th class="px-5 py-3 font-medium">Dalis</th>
-                                        <th class="px-5 py-3 font-medium">Tiekėjas</th>
-                                        <th class="px-5 py-3 font-medium text-right">Vnt. kaina</th>
-                                        <th class="px-5 py-3 font-medium text-center">Kiekis</th>
-                                        <th class="px-5 py-3 font-medium text-right">Suma</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    <?php foreach ($mano as $e): ?>
-                                        <?php $vnt = (float)$e['suma'] / max(1, (int)$e['kiekis']); ?>
-                                        <tr>
-                                            <td class="px-5 py-3">
-                                                <div class="font-medium"><?= htmlspecialchars($e['pavadinimas']) ?></div>
-                                                <div class="text-xs text-slate-500"><?= htmlspecialchars($e['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($e['modelis'] ?? '—') ?></div>
-                                            </td>
-                                            <td class="px-5 py-3"><?= htmlspecialchars($e['tiekejas']) ?></td>
-                                            <td class="px-5 py-3 text-right whitespace-nowrap"><?= eur($vnt) ?></td>
-                                            <td class="px-5 py-3">
-                                                <?php if ($galimaKeisti): ?>
-                                                    <div class="mx-auto flex w-fit items-center rounded-lg border border-slate-300" data-kiekis>
-                                                        <button type="button" data-zingsnis="-1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">−</button>
-                                                        <input type="number" name="kiekis[<?= (int)$e['eilutes_id'] ?>]"
-                                                               value="<?= (int)$e['kiekis'] ?>" min="0" max="<?= (int)$e['sandelyje'] + (int)$e['kiekis'] ?>"
-                                                               class="w-14 border-0 text-center tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
-                                                        <button type="button" data-zingsnis="1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">+</button>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="text-center"><?= (int)$e['kiekis'] ?> vnt.</div>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="px-5 py-3 text-right whitespace-nowrap font-medium"><?= eur($e['suma']) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <?php if ($galimaKeisti): ?>
-                            <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-slate-100 bg-slate-50 rounded-b-xl">
-                                <p class="text-xs text-slate-500">Nustačius kiekį 0, dalis pašalinama iš užsakymo.</p>
-                                <div class="flex gap-2">
-                                    <button type="submit" form="atsaukti-<?= $id ?>"
-                                            class="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                        Atšaukti užsakymą
-                                    </button>
-                                    <button type="submit"
-                                            class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
-                                        Išsaugoti pakeitimus
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </form>
-
-                    <?php if ($galimaKeisti): ?>
-                        <form method="post" id="atsaukti-<?= $id ?>"
-                              onsubmit="return confirm('Ar tikrai norite atšaukti užsakymą Nr. <?= $id ?>?');">
-                            <input type="hidden" name="uzsakymo_id" value="<?= $id ?>">
-                            <input type="hidden" name="veiksmas" value="atsaukti">
-                        </form>
-                    <?php else: ?>
-                        <p class="px-5 py-3 text-xs text-slate-500 border-t border-slate-100">
-                            Užsakymo, kurio būsena „<?= $busTekstas ?>“, keisti ar atšaukti nebegalima.
-                        </p>
-                    <?php endif; ?>
-                </div>
-            </details>
-        <?php endforeach; ?>
+    <!-- Užsakymų lentelė -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-600">
+                <tr>
+                    <th class="px-5 py-3 font-medium">Nr.</th>
+                    <th class="px-5 py-3 font-medium">Pateikta</th>
+                    <th class="px-5 py-3 font-medium">Tiekėjas</th>
+                    <th class="px-5 py-3 font-medium">Būsena</th>
+                    <th class="px-5 py-3 font-medium text-right">Suma</th>
+                    <th class="px-5 py-3 w-16"><span class="sr-only">Detalės</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php foreach ($uzsakymai as $u): ?>
+                    <?php
+                    $id = (int)$u['uzsakymo_id'];
+                    $mano = $eilutes[$id] ?? [];
+                    [$busTekstas, $busKlase] = $busenos[$u['busena']];
+                    $tiekejai = array_unique(array_column($mano, 'tiekejas'));
+                    ?>
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-5 py-3 font-semibold"><?= $id ?></td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></td>
+                        <td class="px-5 py-3"><?= htmlspecialchars(implode(', ', $tiekejai) ?: '—') ?></td>
+                        <td class="px-5 py-3"><span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span></td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap font-semibold tabular-nums"><?= eur($u['suma']) ?></td>
+                        <td class="px-5 py-3 text-right">
+                            <button type="button" data-atidaryti="u<?= $id ?>"
+                                    title="Užsakymo detalės" aria-label="Užsakymo Nr. <?= $id ?> detalės"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-sky-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
+
+    <!-- Popup langai su užsakymo detalėmis -->
+    <?php foreach ($uzsakymai as $u): ?>
+        <?php
+        $id   = (int)$u['uzsakymo_id'];
+        $mano = $eilutes[$id] ?? [];
+        $galimaKeisti = $u['busena'] === 'Pateiktas';
+        [$busTekstas, $busKlase] = $busenos[$u['busena']];
+        ?>
+        <dialog id="u<?= $id ?>" class="w-full max-w-4xl rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50">
+            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800">Užsakymas Nr. <?= $id ?></h2>
+                    <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                        <span><?= date('Y-m-d H:i', strtotime($u['pateikimo_data'])) ?></span>
+                        <span class="rounded-full px-2.5 py-0.5 text-xs font-medium <?= $busKlase ?>"><?= $busTekstas ?></span>
+                    </div>
+                </div>
+                <form method="dialog">
+                    <button aria-label="Uždaryti" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+
+            <form method="post">
+                <input type="hidden" name="uzsakymo_id" value="<?= $id ?>">
+                <input type="hidden" name="veiksmas" value="redaguoti">
+
+                <div class="max-h-[60vh] overflow-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-50 text-left text-slate-600">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">Dalis</th>
+                                <th class="px-4 py-3 font-medium">Tiekėjas</th>
+                                <th class="px-4 py-3 font-medium text-right">Vnt. kaina</th>
+                                <th class="px-4 py-3 font-medium text-center">Kiekis</th>
+                                <th class="px-6 py-3 font-medium text-right">Suma</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <?php foreach ($mano as $e): ?>
+                                <?php $vnt = (float)$e['suma'] / max(1, (int)$e['kiekis']); ?>
+                                <tr>
+                                    <td class="px-6 py-3">
+                                        <div class="font-medium"><?= htmlspecialchars($e['pavadinimas']) ?></div>
+                                        <div class="text-xs text-slate-500"><?= htmlspecialchars($e['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($e['modelis'] ?? '—') ?></div>
+                                    </td>
+                                    <td class="px-4 py-3"><?= htmlspecialchars($e['tiekejas']) ?></td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap"><?= eur($vnt) ?></td>
+                                    <td class="px-4 py-3">
+                                        <?php if ($galimaKeisti): ?>
+                                            <div class="mx-auto flex w-fit items-center rounded-lg border border-slate-300" data-kiekis>
+                                                <button type="button" data-zingsnis="-1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">−</button>
+                                                <input type="number" name="kiekis[<?= (int)$e['eilutes_id'] ?>]"
+                                                       value="<?= (int)$e['kiekis'] ?>" min="0" max="<?= (int)$e['sandelyje'] + (int)$e['kiekis'] ?>"
+                                                       class="w-14 border-0 text-center tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+                                                <button type="button" data-zingsnis="1" class="px-3 py-1 text-lg leading-none hover:bg-slate-100">+</button>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-center"><?= (int)$e['kiekis'] ?> vnt.</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="px-6 py-3 text-right whitespace-nowrap font-medium"><?= eur($e['suma']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot class="border-t border-slate-200">
+                            <tr>
+                                <td colspan="4" class="px-6 py-3 text-right text-slate-500">Iš viso</td>
+                                <td class="px-6 py-3 text-right whitespace-nowrap font-semibold"><?= eur($u['suma']) ?></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <?php if ($galimaKeisti): ?>
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
+                        <p class="text-xs text-slate-500">Nustačius kiekį 0, dalis pašalinama iš užsakymo.</p>
+                        <div class="flex gap-2">
+                            <button type="submit" form="atsaukti-<?= $id ?>"
+                                    class="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                Atšaukti užsakymą
+                            </button>
+                            <button type="submit"
+                                    class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
+                                Išsaugoti pakeitimus
+                            </button>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </form>
+
+            <?php if ($galimaKeisti): ?>
+                <form method="post" id="atsaukti-<?= $id ?>"
+                      onsubmit="return confirm('Ar tikrai norite atšaukti užsakymą Nr. <?= $id ?>?');">
+                    <input type="hidden" name="uzsakymo_id" value="<?= $id ?>">
+                    <input type="hidden" name="veiksmas" value="atsaukti">
+                </form>
+            <?php else: ?>
+                <p class="px-6 py-3 text-xs text-slate-500 border-t border-slate-200 bg-slate-50">
+                    Užsakymo, kurio būsena „<?= $busTekstas ?>“, keisti ar atšaukti nebegalima.
+                </p>
+            <?php endif; ?>
+        </dialog>
+    <?php endforeach; ?>
 <?php endif; ?>
 
 <script>
@@ -285,10 +336,21 @@ document.addEventListener('click', e => {
     input.value = Math.max(+input.min, Math.min(+input.max, n));
 });
 
-// Po redirect atidarom tą užsakymą, kurį ką tik keitėm
+// Atidaryti popup paspaudus ikoną
+document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-atidaryti]');
+    if (btn) document.getElementById(btn.dataset.atidaryti)?.showModal();
+});
+
+// Uždaryti paspaudus šalia lango
+document.querySelectorAll('dialog').forEach(d => {
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+});
+
+// Po redirect (#u12) atidarom tą užsakymą, kurį ką tik keitėm
 if (location.hash) {
     const el = document.querySelector(location.hash);
-    if (el && el.tagName === 'DETAILS') el.open = true;
+    if (el && el.tagName === 'DIALOG') el.showModal();
 }
 </script>
 

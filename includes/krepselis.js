@@ -73,18 +73,13 @@ const Krepselis = (() => {
                 + (k > 0 ? '<span class="block text-xs text-sky-700">' + k + ' krepšelyje</span>' : '');
         });
 
+        // Mygtukas – fiksuoto dydžio ikona: keičiam tik būseną, ne tekstą
         document.querySelectorAll('[data-i-krepseli]').forEach(btn => {
-            if (btn.dataset.originalas === undefined) btn.dataset.originalas = btn.innerHTML;
             const sandelyje = parseInt(btn.dataset.sandelyje, 10) || 0;
             const k = krepselyje[parseInt(btn.dataset.id, 10)] || 0;
             const pilnas = k >= sandelyje;
 
             btn.disabled = pilnas;
-            btn.classList.toggle('opacity-50', pilnas);
-            btn.classList.toggle('cursor-not-allowed', pilnas);
-            if (!btn._laikas) {
-                btn.innerHTML = pilnas ? 'Visi krepšelyje' : btn.dataset.originalas;
-            }
         });
     }
 
@@ -100,7 +95,6 @@ const Krepselis = (() => {
 
         const esama = gauti().find(p => p.id === parseInt(d.id, 10));
         if (esama && esama.kiekis >= sandelyje) {
-            pranesti(btn, 'Daugiau nėra');
             return;
         }
 
@@ -113,17 +107,7 @@ const Krepselis = (() => {
             kaina: parseFloat(d.kaina),
             sandelyje: sandelyje,
         });
-        pranesti(btn, '✓ Pridėta');
     });
-
-    function pranesti(btn, tekstas) {
-        btn.innerHTML = tekstas;
-        clearTimeout(btn._laikas);
-        btn._laikas = setTimeout(() => {
-            btn._laikas = null;
-            atnaujintiLikucius();   // grąžina tinkamą mygtuko tekstą
-        }, 1200);
-    }
 
     // Kitame skirtuke pakeitus krepšelį – atnaujinam ženkliuką ir čia
     window.addEventListener('storage', e => {

@@ -8,14 +8,18 @@ checkRole('Vadybininkas');
 $q       = trim($_GET['q'] ?? '');
 $dalisId = (int)($_GET['dalis'] ?? 0);
 
+// raktas => [tekstas sąraše, ORDER BY]
 $rikiavimai = [
-    'kaina'       => 'p.kaina ASC',
-    'pavadinimas' => 'p.pavadinimas ASC',
-    'gamintojas'  => 'p.gamintojas ASC, p.kaina ASC',
-    'modelis'     => 'p.modelis ASC, p.kaina ASC',
-    'pristatymas' => 'p.pristatymo_laikas IS NULL, p.pristatymo_laikas ASC, p.kaina ASC',
+    'kaina'        => ['Kaina: nuo mažiausios',     'p.kaina ASC, p.pavadinimas ASC'],
+    'kaina_desc'   => ['Kaina: nuo didžiausios',    'p.kaina DESC, p.pavadinimas ASC'],
+    'pavadinimas'  => ['Pavadinimas: A–Z',          'p.pavadinimas ASC, p.kaina ASC'],
+    'pavadinimas_desc' => ['Pavadinimas: Z–A',      'p.pavadinimas DESC, p.kaina ASC'],
+    'pristatymas'  => ['Greičiausias pristatymas',  'p.pristatymo_laikas IS NULL, p.pristatymo_laikas ASC, p.kaina ASC'],
+    'gamintojas'   => ['Gamintojas: A–Z',           'p.gamintojas IS NULL, p.gamintojas ASC, p.kaina ASC'],
+    'modelis'      => ['Modelis: A–Z',              'p.modelis IS NULL, p.modelis ASC, p.kaina ASC'],
 ];
 $rik = array_key_exists($_GET['rik'] ?? '', $rikiavimai) ? $_GET['rik'] : 'kaina';
+$orderBy = $rikiavimai[$rik][1];
 
 $laukai = 'p.prekes_id, p.pavadinimas, p.gamintojas, p.modelis, p.kaina, p.kiekis, p.pristatymo_laikas, p.tiekejo_id,
            COALESCE(n.pavadinimas, CONCAT(n.vardas, " ", n.pavarde)) AS tiekejas';
@@ -30,16 +34,17 @@ if ($q !== '') {
         "SELECT $laukai
          FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
          WHERE p.pavadinimas LIKE :q1 OR p.gamintojas LIKE :q2 OR p.modelis LIKE :q3
-         ORDER BY {$rikiavimai[$rik]}"
+         ORDER BY $orderBy"
     );
     $like = likeReiksme($q);
     $stmt->execute(['q1' => $like, 'q2' => $like, 'q3' => $like]);
     $dalys = $stmt->fetchAll();
 } else {
+    // Be paieškos – visos dalys
     $dalys = $pdo->query(
         "SELECT $laukai
          FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
-         ORDER BY RAND() LIMIT 12"
+         ORDER BY $orderBy"
     )->fetchAll();
 }
 
@@ -82,7 +87,7 @@ if ($pasirinkta) {
              WHERE p.tiekejo_id <> :tiekejas
          ) x
          WHERE panasumas > 0
-         ORDER BY " . str_replace('p.', 'x.', $rikiavimai[$rik]) . "
+         ORDER BY " . str_replace('p.', 'x.', $orderBy) . "
          LIMIT 20"
     );
     $stmt->execute($params);
@@ -109,15 +114,18 @@ require __DIR__ . '/../includes/header.php';
 
 <!-- Paieškos juosta -->
 <form method="get" class="mb-8 flex flex-col sm:flex-row gap-3">
+    <?php if ($pasirinkta): ?>
+        <!-- keičiant rikiavimą palyginimas lieka atidarytas -->
+        <input type="hidden" name="dalis" value="<?= (int)$pasirinkta['prekes_id'] ?>">
+    <?php endif; ?>
     <input type="search" name="q" value="<?= htmlspecialchars($q) ?>" autofocus
            placeholder="Įveskite dalies pavadinimą, gamintoją ar modelį…"
            class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
-    <select name="rik" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5">
-        <option value="kaina" <?= $rik === 'kaina' ? 'selected' : '' ?>>Pigiausios pirma</option>
-        <option value="pavadinimas" <?= $rik === 'pavadinimas' ? 'selected' : '' ?>>Pagal pavadinimą</option>
-        <option value="gamintojas" <?= $rik === 'gamintojas' ? 'selected' : '' ?>>Pagal gamintoją</option>
-        <option value="modelis" <?= $rik === 'modelis' ? 'selected' : '' ?>>Pagal modelį</option>
-        <option value="pristatymas" <?= $rik === 'pristatymas' ? 'selected' : '' ?>>Greičiausias pristatymas</option>
+    <select name="rik" onchange="this.form.submit()" aria-label="Rikiuoti"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2.5">
+        <?php foreach ($rikiavimai as $raktas => [$tekstas]): ?>
+            <option value="<?= $raktas ?>" <?= $rik === $raktas ? 'selected' : '' ?>><?= $tekstas ?></option>
+        <?php endforeach; ?>
     </select>
     <button class="rounded-lg bg-sky-600 px-6 py-2.5 font-medium text-white hover:bg-sky-700">Ieškoti</button>
 </form>
@@ -172,7 +180,7 @@ require __DIR__ . '/../includes/header.php';
                                 <?= kaina($d['kaina']) ?>
                             </td>
                             <td class="px-5 py-3 text-right whitespace-nowrap"><?= likutis($d) ?></td>
-                            <td class="px-5 py-3 text-right"><?= krepselioMygtukas($d, $d['tiekejas'], true) ?></td>
+                            <td class="px-5 py-3 text-right"><?= krepselioMygtukas($d, $d['tiekejas']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -187,7 +195,7 @@ require __DIR__ . '/../includes/header.php';
 
 <!-- Rezultatai -->
 <h2 class="text-sm font-medium uppercase tracking-wide text-slate-500 mb-3">
-    <?= $q !== '' ? 'Rasta dalių: ' . count($dalys) : 'Atsitiktinės dalys' ?>
+    <?= $q !== '' ? 'Rasta dalių: ' . count($dalys) : 'Visos dalys: ' . count($dalys) ?>
 </h2>
 
 <?php if (!$dalys): ?>
@@ -225,10 +233,13 @@ require __DIR__ . '/../includes/header.php';
                         <td class="px-5 py-3">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>"
-                                   class="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 <?= $aktyvi ? 'border-sky-400 bg-sky-100 text-sky-800' : 'text-slate-700' ?>">
-                                    Palyginti
+                                   title="Palyginti su kitų tiekėjų dalimis" aria-label="Palyginti „<?= htmlspecialchars($d['pavadinimas']) ?>“"
+                                   class="inline-flex h-8 w-8 items-center justify-center rounded-lg border <?= $aktyvi ? 'border-sky-400 bg-sky-100 text-sky-800' : 'border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-sky-700' ?>">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z"/>
+                                    </svg>
                                 </a>
-                                <?= krepselioMygtukas($d, $d['tiekejas'], true) ?>
+                                <?= krepselioMygtukas($d, $d['tiekejas']) ?>
                             </div>
                         </td>
                     </tr>
