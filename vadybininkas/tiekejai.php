@@ -16,26 +16,22 @@ $tiekejai = $pdo->query(
      ORDER BY COALESCE(n.pavadinimas, n.pavarde)"
 )->fetchAll();
 
-// «extend»: pasirinktas tiekėjas ir jo siūlomos dalys
-$pasirinktoId = (int)($_GET['id'] ?? 0);
-$pasirinktas  = null;
-$prekes       = [];
-
-foreach ($tiekejai as $t) {
-    if ((int)$t['naudotojo_id'] === $pasirinktoId) {
-        $pasirinktas = $t;
-        break;
-    }
+// «extend» Peržiūrėti tiekėjo siūlomas dalis – visų tiekėjų dalys viena užklausa,
+// kad popup atsidarytų iškart, be puslapio perkrovimo
+$dalysPagalTiekeja = [];
+foreach ($pdo->query(
+    "SELECT p.prekes_id, p.tiekejo_id, p.pavadinimas, p.gamintojas, p.modelis, p.kaina, p.kiekis, p.pristatymo_laikas
+     FROM preke p JOIN naudotojas n ON n.naudotojo_id = p.tiekejo_id
+     WHERE n.tipas = 'Tiekejas'
+     ORDER BY p.pavadinimas"
+) as $p) {
+    $dalysPagalTiekeja[$p['tiekejo_id']][] = $p;
 }
 
-if ($pasirinktas) {
-    $stmt = $pdo->prepare(
-        'SELECT prekes_id, pavadinimas, gamintojas, modelis, kaina, kiekis
-         FROM preke WHERE tiekejo_id = ? ORDER BY pavadinimas'
-    );
-    $stmt->execute([$pasirinktoId]);
-    $prekes = $stmt->fetchAll();
-}
+// ?id=.. (pvz. nuoroda iš dalių paieškos) – to tiekėjo popup atidaromas automatiškai
+$atidarytiId = (int)($_GET['id'] ?? 0);
+$ids = array_map('intval', array_column($tiekejai, 'naudotojo_id'));
+$nerastas = $atidarytiId && !in_array($atidarytiId, $ids, true);
 
 function tiekejoPavadinimas(array $t): string {
     return $t['pavadinimas'] ?: $t['vardas'] . ' ' . $t['pavarde'];
@@ -47,107 +43,124 @@ require __DIR__ . '/../includes/header.php';
 
 <h1 class="text-2xl font-semibold mb-6">Tiekėjai</h1>
 
-<?php if ($pasirinktoId && !$pasirinktas): ?>
-    <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-        Toks tiekėjas nerastas.
-    </div>
+<?php if ($nerastas): ?>
+    <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">Toks tiekėjas nerastas.</div>
 <?php endif; ?>
 
-<div class="grid gap-6 lg:grid-cols-5">
+<?php if (!$tiekejai): ?>
+    <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">Tiekėjų kol kas nėra.</div>
+<?php else: ?>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-600">
+                <tr>
+                    <th class="px-5 py-3 font-medium">Tiekėjas</th>
+                    <th class="px-5 py-3 font-medium">El. paštas</th>
+                    <th class="px-5 py-3 font-medium">Telefonas</th>
+                    <th class="px-5 py-3 font-medium text-center">Siūlomų dalių</th>
+                    <th class="px-5 py-3 w-16"><span class="sr-only">Dalys</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php foreach ($tiekejai as $t): ?>
+                    <?php $id = (int)$t['naudotojo_id']; $sk = (int)$t['prekiu_sk']; ?>
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-5 py-3">
+                            <div class="font-medium text-slate-800"><?= htmlspecialchars(tiekejoPavadinimas($t)) ?></div>
+                            <?php if ($t['pavadinimas']): ?>
+                                <div class="text-xs text-slate-500"><?= htmlspecialchars($t['vardas'] . ' ' . $t['pavarde']) ?></div>
+                            <?php endif; ?>
+                        </td>
+                        <td class="px-5 py-3">
+                            <a href="mailto:<?= htmlspecialchars($t['pastas']) ?>" class="text-sky-700 hover:underline"><?= htmlspecialchars($t['pastas']) ?></a>
+                        </td>
+                        <td class="px-5 py-3 whitespace-nowrap text-slate-600"><?= htmlspecialchars($t['telefonas'] ?? '—') ?></td>
+                        <td class="px-5 py-3 text-center tabular-nums"><?= $sk ?></td>
+                        <td class="px-5 py-3 text-right">
+                            <button type="button" data-atidaryti="tiekejas-<?= $id ?>"
+                                    title="Peržiūrėti siūlomas dalis" aria-label="Peržiūrėti <?= htmlspecialchars(tiekejoPavadinimas($t)) ?> siūlomas dalis"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-sky-50 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0-3-3m3 3 3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 
-    <!-- Tiekėjų sąrašas -->
-    <section class="lg:col-span-2">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <?php if (!$tiekejai): ?>
-                <p class="p-5 text-slate-500">Tiekėjų kol kas nėra.</p>
-            <?php else: ?>
-                <ul class="divide-y divide-slate-100">
-                    <?php foreach ($tiekejai as $t): ?>
-                        <?php $aktyvus = (int)$t['naudotojo_id'] === $pasirinktoId; ?>
-                        <li>
-                            <a href="?id=<?= (int)$t['naudotojo_id'] ?>"
-                               class="block px-5 py-4 <?= $aktyvus ? 'bg-sky-50 border-l-4 border-sky-500' : 'hover:bg-slate-50 border-l-4 border-transparent' ?>">
-                                <div class="flex items-start justify-between gap-3">
-                                    <span class="font-medium <?= $aktyvus ? 'text-sky-800' : 'text-slate-800' ?>">
-                                        <?= htmlspecialchars(tiekejoPavadinimas($t)) ?>
-                                    </span>
-                                    <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                                        <?= (int)$t['prekiu_sk'] ?> dal.
-                                    </span>
-                                </div>
-                                <div class="mt-1.5 text-sm text-slate-500 space-y-1">
-                                    <div class="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
-                                        </svg>
-                                        <span class="truncate"><?= htmlspecialchars($t['pastas']) ?></span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/>
-                                        </svg>
-                                        <span><?= htmlspecialchars($t['telefonas'] ?? '—') ?></span>
-                                    </div>
-                                </div>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <!-- Pasirinkto tiekėjo siūlomos dalys -->
-    <section class="lg:col-span-3">
-        <?php if (!$pasirinktas): ?>
-            <div class="rounded-xl border-2 border-dashed border-slate-300 p-10 text-center text-slate-500">
-                Pasirinkite tiekėją iš sąrašo, kad pamatytumėte jo siūlomas dalis.
-            </div>
-        <?php else: ?>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200">
-                <div class="px-5 py-4 border-b border-slate-200">
-                    <h2 class="text-lg font-semibold"><?= htmlspecialchars(tiekejoPavadinimas($pasirinktas)) ?></h2>
-                    <p class="text-sm text-slate-500">Siūlomos dalys</p>
+    <!-- Popup langai su tiekėjų dalimis -->
+    <?php foreach ($tiekejai as $t): ?>
+        <?php $id = (int)$t['naudotojo_id']; $prekes = $dalysPagalTiekeja[$id] ?? []; ?>
+        <dialog id="tiekejas-<?= $id ?>" <?= $id === $atidarytiId ? 'data-atidaryti-iskart' : '' ?>
+                class="w-full max-w-5xl rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50">
+            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-200">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800"><?= htmlspecialchars(tiekejoPavadinimas($t)) ?></h2>
                 </div>
-
-                <?php if (!$prekes): ?>
-                    <p class="p-5 text-slate-500">Šis tiekėjas dalių kol kas nesiūlo.</p>
-                <?php else: ?>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-left text-slate-600">
-                                <tr>
-                                    <th class="px-5 py-3 font-medium">Pavadinimas</th>
-                                    <th class="px-5 py-3 font-medium">Gamintojas</th>
-                                    <th class="px-5 py-3 font-medium">Modelis</th>
-                                    <th class="px-5 py-3 font-medium text-right">Kaina</th>
-                                    <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
-                                    <th class="px-5 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <?php foreach ($prekes as $p): ?>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="px-5 py-3 font-medium"><?= htmlspecialchars($p['pavadinimas']) ?></td>
-                                        <td class="px-5 py-3"><?= htmlspecialchars($p['gamintojas'] ?? '—') ?></td>
-                                        <td class="px-5 py-3"><?= htmlspecialchars($p['modelis'] ?? '—') ?></td>
-                                        <td class="px-5 py-3 text-right whitespace-nowrap"><?= number_format((float)$p['kaina'], 2, ',', ' ') ?> €</td>
-                                        <td class="px-5 py-3 text-right">
-                                            <?= likutis($p) ?>
-                                        </td>
-                                        <td class="px-5 py-3 text-right">
-                                            <?= krepselioMygtukas($p, tiekejoPavadinimas($pasirinktas), true) ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
+                <form method="dialog">
+                    <button aria-label="Uždaryti" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
-        <?php endif; ?>
-    </section>
 
-</div>
+            <?php if (!$prekes): ?>
+                <p class="px-6 py-10 text-center text-slate-500">Šis tiekėjas dalių kol kas nesiūlo.</p>
+            <?php else: ?>
+                <div class="max-h-[70vh] overflow-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-50 text-left text-slate-600">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">Pavadinimas</th>
+                                <th class="px-4 py-3 font-medium">Gamintojas</th>
+                                <th class="px-4 py-3 font-medium">Modelis</th>
+                                <th class="px-4 py-3 font-medium text-right">Pristatymas</th>
+                                <th class="px-4 py-3 font-medium text-right">Kaina</th>
+                                <th class="px-4 py-3 font-medium text-right">Sandėlyje</th>
+                                <th class="px-6 py-3"><span class="sr-only">Veiksmai</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <?php foreach ($prekes as $p): ?>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-3 font-medium"><?= htmlspecialchars($p['pavadinimas']) ?></td>
+                                    <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($p['gamintojas'] ?? '—') ?></td>
+                                    <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($p['modelis'] ?? '—') ?></td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap text-slate-600">
+                                        <?= $p['pristatymo_laikas'] !== null ? (int)$p['pristatymo_laikas'] . ' d.' : '—' ?>
+                                    </td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap"><?= number_format((float)$p['kaina'], 2, ',', ' ') ?> €</td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap"><?= likutis($p) ?></td>
+                                    <td class="px-6 py-3 text-right"><?= krepselioMygtukas($p, tiekejoPavadinimas($t), true) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </dialog>
+    <?php endforeach; ?>
+<?php endif; ?>
+
+<script>
+// Atidaryti popup paspaudus ikoną
+document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-atidaryti]');
+    if (btn) document.getElementById(btn.dataset.atidaryti)?.showModal();
+});
+
+// Uždaryti paspaudus šalia lango (ant tamsaus fono)
+document.querySelectorAll('dialog').forEach(d => {
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+});
+
+// ?id=.. – atidarom iškart
+document.querySelector('dialog[data-atidaryti-iskart]')?.showModal();
+</script>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

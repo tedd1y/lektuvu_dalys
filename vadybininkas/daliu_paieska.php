@@ -13,10 +13,11 @@ $rikiavimai = [
     'pavadinimas' => 'p.pavadinimas ASC',
     'gamintojas'  => 'p.gamintojas ASC, p.kaina ASC',
     'modelis'     => 'p.modelis ASC, p.kaina ASC',
+    'pristatymas' => 'p.pristatymo_laikas IS NULL, p.pristatymo_laikas ASC, p.kaina ASC',
 ];
 $rik = array_key_exists($_GET['rik'] ?? '', $rikiavimai) ? $_GET['rik'] : 'kaina';
 
-$laukai = 'p.prekes_id, p.pavadinimas, p.gamintojas, p.modelis, p.kaina, p.kiekis, p.tiekejo_id,
+$laukai = 'p.prekes_id, p.pavadinimas, p.gamintojas, p.modelis, p.kaina, p.kiekis, p.pristatymo_laikas, p.tiekejo_id,
            COALESCE(n.pavadinimas, CONCAT(n.vardas, " ", n.pavarde)) AS tiekejas';
 
 function likeReiksme(string $s): string {
@@ -93,6 +94,9 @@ function nuoroda(array $keisti): string {
     $p = array_merge(['q' => $_GET['q'] ?? null, 'rik' => $_GET['rik'] ?? null, 'dalis' => $_GET['dalis'] ?? null], $keisti);
     return '?' . http_build_query(array_filter($p, fn($v) => $v !== null && $v !== ''));
 }
+function pristatymas(array $d): string {
+    return $d['pristatymo_laikas'] !== null ? (int)$d['pristatymo_laikas'] . ' d.' : '—';
+}
 function kaina($k): string {
     return number_format((float)$k, 2, ',', ' ') . ' €';
 }
@@ -113,6 +117,7 @@ require __DIR__ . '/../includes/header.php';
         <option value="pavadinimas" <?= $rik === 'pavadinimas' ? 'selected' : '' ?>>Pagal pavadinimą</option>
         <option value="gamintojas" <?= $rik === 'gamintojas' ? 'selected' : '' ?>>Pagal gamintoją</option>
         <option value="modelis" <?= $rik === 'modelis' ? 'selected' : '' ?>>Pagal modelį</option>
+        <option value="pristatymas" <?= $rik === 'pristatymas' ? 'selected' : '' ?>>Greičiausias pristatymas</option>
     </select>
     <button class="rounded-lg bg-sky-600 px-6 py-2.5 font-medium text-white hover:bg-sky-700">Ieškoti</button>
 </form>
@@ -144,6 +149,7 @@ require __DIR__ . '/../includes/header.php';
                         <th class="px-5 py-3 font-medium">Tiekėjas</th>
                         <th class="px-5 py-3 font-medium">Gamintojas</th>
                         <th class="px-5 py-3 font-medium">Modelis</th>
+                        <th class="px-5 py-3 font-medium text-right">Pristatymas</th>
                         <th class="px-5 py-3 font-medium text-right">Kaina</th>
                         <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
                         <th class="px-5 py-3"></th>
@@ -161,6 +167,7 @@ require __DIR__ . '/../includes/header.php';
                             </td>
                             <td class="px-5 py-3"><?= htmlspecialchars($d['gamintojas'] ?? '—') ?></td>
                             <td class="px-5 py-3"><?= htmlspecialchars($d['modelis'] ?? '—') ?></td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap"><?= pristatymas($d) ?></td>
                             <td class="px-5 py-3 text-right whitespace-nowrap <?= (float)$d['kaina'] == (float)$pigiausia && count($visos) > 1 ? 'text-green-700 font-semibold' : '' ?>">
                                 <?= kaina($d['kaina']) ?>
                             </td>
@@ -188,29 +195,46 @@ require __DIR__ . '/../includes/header.php';
         <?= $q !== '' ? 'Pagal „' . htmlspecialchars($q) . '“ nieko nerasta.' : 'Dalių sistemoje kol kas nėra.' ?>
     </div>
 <?php else: ?>
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <?php foreach ($dalys as $d): ?>
-            <?php $aktyvi = $pasirinkta && (int)$d['prekes_id'] === (int)$pasirinkta['prekes_id']; ?>
-            <div class="flex flex-col rounded-xl bg-white shadow-sm border transition <?= $aktyvi ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200 hover:border-sky-400 hover:shadow' ?>">
-                <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>" class="block flex-1 p-5 pb-3">
-                    <div class="flex items-start justify-between gap-3">
-                        <h3 class="font-semibold text-slate-800"><?= htmlspecialchars($d['pavadinimas']) ?></h3>
-                        <span class="shrink-0 font-semibold text-sky-700"><?= kaina($d['kaina']) ?></span>
-                    </div>
-                    <p class="mt-1 text-sm text-slate-500">
-                        <?= htmlspecialchars($d['gamintojas'] ?? '—') ?> · <?= htmlspecialchars($d['modelis'] ?? '—') ?>
-                    </p>
-                    <div class="mt-3 flex items-center justify-between text-sm">
-                        <span class="text-slate-600"><?= htmlspecialchars($d['tiekejas']) ?></span>
-                        <span><?= likutis($d) ?></span>
-                    </div>
-                    <p class="mt-3 text-xs text-sky-600">Palyginti su kitais tiekėjais →</p>
-                </a>
-                <div class="px-5 pb-5">
-                    <?= krepselioMygtukas($d, $d['tiekejas']) ?>
-                </div>
-            </div>
-        <?php endforeach; ?>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-600">
+                <tr>
+                    <th class="px-5 py-3 font-medium">Pavadinimas</th>
+                    <th class="px-5 py-3 font-medium">Tiekėjas</th>
+                    <th class="px-5 py-3 font-medium">Gamintojas</th>
+                    <th class="px-5 py-3 font-medium">Modelis</th>
+                    <th class="px-5 py-3 font-medium text-right">Pristatymas</th>
+                    <th class="px-5 py-3 font-medium text-right">Kaina</th>
+                    <th class="px-5 py-3 font-medium text-right">Sandėlyje</th>
+                    <th class="px-5 py-3"><span class="sr-only">Veiksmai</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php foreach ($dalys as $d): ?>
+                    <?php $aktyvi = $pasirinkta && (int)$d['prekes_id'] === (int)$pasirinkta['prekes_id']; ?>
+                    <tr class="<?= $aktyvi ? 'bg-sky-50' : 'hover:bg-slate-50' ?>">
+                        <td class="px-5 py-3 font-medium text-slate-800"><?= htmlspecialchars($d['pavadinimas']) ?></td>
+                        <td class="px-5 py-3">
+                            <a href="tiekejai.php?id=<?= (int)$d['tiekejo_id'] ?>" class="text-sky-700 hover:underline"><?= htmlspecialchars($d['tiekejas']) ?></a>
+                        </td>
+                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($d['gamintojas'] ?? '—') ?></td>
+                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($d['modelis'] ?? '—') ?></td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap text-slate-600"><?= pristatymas($d) ?></td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap font-medium"><?= kaina($d['kaina']) ?></td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap"><?= likutis($d) ?></td>
+                        <td class="px-5 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="<?= htmlspecialchars(nuoroda(['dalis' => (int)$d['prekes_id']])) ?>"
+                                   class="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 <?= $aktyvi ? 'border-sky-400 bg-sky-100 text-sky-800' : 'text-slate-700' ?>">
+                                    Palyginti
+                                </a>
+                                <?= krepselioMygtukas($d, $d['tiekejas'], true) ?>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 <?php endif; ?>
 
