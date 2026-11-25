@@ -27,10 +27,9 @@ $puslapioPavadinimas = 'Pradžia';
 require __DIR__ . '/includes/header.php';
 ?>
 
-<h1 class="text-2xl font-semibold mb-1">Sveiki, <?= htmlspecialchars($_SESSION['vardas']) ?>!</h1>
+<h1 class="text-2xl font-semibold mb-6">Pasirinkite veiksmą</h1>
 
 <?php if ($mano): ?>
-    <p class="text-slate-500 mb-6">Pasirinkite, ką norite daryti.</p>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <?php foreach ($mano as [$pavadinimas, $aprasymas, $nuoroda]): ?>

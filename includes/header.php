@@ -80,9 +80,11 @@ unset($_SESSION['zinute']);
                               class="hidden absolute -top-1 -right-1 min-w-[1.25rem] h-5 rounded-full bg-red-600 px-1 text-center text-xs font-semibold leading-5 text-white">0</span>
                     </a>
                 <?php endif; ?>
-                <span class="text-slate-600">
-                    <?= htmlspecialchars($_SESSION['vardas'] . ' ' . $_SESSION['pavarde']) ?>
-                    <span class="ml-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                <span class="flex flex-col items-end leading-tight">
+                    <span class="font-medium text-slate-700">
+                        <?= htmlspecialchars($_SESSION['vardas'] . ' ' . $_SESSION['pavarde']) ?>
+                    </span>
+                    <span class="text-xs text-slate-500">
                         <?= htmlspecialchars($roliuPavadinimai[$tipas] ?? $tipas) ?>
                     </span>
                 </span>
