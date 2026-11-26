@@ -58,7 +58,11 @@ INSERT INTO `naudotojas` (`naudotojo_id`, `vardas`, `pavarde`, `pavadinimas`, `p
 (31, 'Vilius', 'Tiekėjęs', 'Susprogusių lėktuvų dalių šrotas', 'info@srotas.lt', '$2y$10$HNWRaJPON/uzchO3JWagj.Pr7LBW5gTcTt2Iebv7LfIJAmxv9DdCG', '+370676767', 'Tiekejas'),
 (60, 'Karolis', 'Tiekėjęs', 'Ran Air', 'info@ran.com', '$2y$10$B0HeheTuFwiWjiyE6C9ZZeO1RxM2E.L8yG73Hx1yrcJAzLIUEl1yS', '+3706666666', 'Tiekejas'),
 (67, 'Mysliukas', 'Naudotojas', NULL, 'mysliukas@gmail.com', '$2y$10$GO/F5GRdJ.OIVLeNTOeaQeM4rYgH88xex3Gg5BDTzQFvl8BUa1WfO', NULL, 'Naudotojas'),
-(68, 'Jonas', 'Tiekėjas', 'Baltic Aero Parts', 'info@balticaero.lt', '$2y$10$uo6KYHmmKO8ZxnXhaNNnOuxPhd4ClxL03XYyrlQsw0EUmDZ.bA5HC', '+37060000000', 'Tiekejas');
+(68, 'Jonas', 'Tiekėjas', 'Baltic Aero Parts', 'info@balticaero.lt', '$2y$10$uo6KYHmmKO8ZxnXhaNNnOuxPhd4ClxL03XYyrlQsw0EUmDZ.bA5HC', '+37060000000', 'Tiekejas'),
+(69, 'Testas', 'Naudotojas', NULL, 'naudotojas@test.lt', '$2y$10$VMmdPotG7Q4KtwA87e/AqOsi5Z/NgPuml60ph7leGLTjSxFlkhGRy', NULL, 'Naudotojas'),
+(70, 'Testas', 'Vadybininkas', NULL, 'vadybininkas@test.lt', '$2y$10$m4K0/n5Z.Q7AYZmDLehM5O0Hy7XJRNE1LPu8uVj.pB2m73.TJo76u', '+37060000010', 'Vadybininkas'),
+(71, 'Testas', 'Tiekėjas', 'UAB Testinis tiekėjas', 'tiekejas@test.lt', '$2y$10$OlDzZzK.1MloUeJDCeYP5uyMlRxMsKKc1DYERSCUIB.Mwy0N6s8xm', '+37060000011', 'Tiekejas'),
+(72, 'Testas', 'Direktorius', NULL, 'direktorius@test.lt', '$2y$10$LZR/7/gcx7OPn3R5ztk8ke5UGBDYjKKcQqLUB47KzNFyAu6Ju6olG', NULL, 'Direktorius');
 
 -- --------------------------------------------------------
 
@@ -185,7 +189,7 @@ ALTER TABLE `uzsakymo_preke`
 -- AUTO_INCREMENT for table `naudotojas`
 --
 ALTER TABLE `naudotojas`
-  MODIFY `naudotojo_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `naudotojo_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
 
 --
 -- AUTO_INCREMENT for table `preke`

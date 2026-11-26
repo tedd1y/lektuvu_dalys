@@ -35,7 +35,7 @@ Su git:
 
 ```bash
 cd /Applications/XAMPP/xamppfiles/htdocs
-git clone <repozitorijos-adresas> lektuvu_dalys
+git clone tedd1y/lektuvu_dalys
 ```
 
 Arba tiesiog nukopijuokite aplanką.
